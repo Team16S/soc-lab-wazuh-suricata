@@ -341,6 +341,20 @@ Tạo Template & Clones        Suricata & Nginx             Active Response, Bot
    echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | sudo tee -a /etc/apt/sources.list.d/wazuh.list
    sudo apt update
    sudo WAZUH_MANAGER="192.168.100.10" apt install wazuh-agent -y
+   ```
+4. Bật tính năng giám sát toàn vẹn tệp (FIM - Syscheck) chống tải WebShell:
+   Mở `/var/ossec/etc/ossec.conf` trên máy Target, tìm thẻ `<syscheck>` và thêm dòng cấu hình giám sát thời gian thực thư mục Web:
+   ```xml
+   <syscheck>
+     <disabled>no</disabled>
+     <frequency>300</frequency>
+     <scan_on_start>yes</scan_on_start>
+     <!-- Giám sát thời gian thực thư mục Web Server chống WebShell -->
+     <directories check_all="yes" realtime="yes" report_changes="yes">/var/www/html</directories>
+   </syscheck>
+   ```
+5. Kích hoạt dịch vụ:
+   ```bash
    sudo systemctl enable wazuh-agent && sudo systemctl restart wazuh-agent
    ```
 
@@ -427,18 +441,19 @@ Tạo Template & Clones        Suricata & Nginx             Active Response, Bot
 
 ---
 
-## 10. KỊCH BẢN KIỂM THỬ THỰC NGHIỆM TẤN CÔNG - PHÒNG THỦ
+## 10. KỊCH BẢN KIỂM THỬ THỰC NGHIỆM TẤN CÔNG - PHÒNG THỦ & MITRE ATT&CK
 
 > **LỆNH BẮT BUỘC TRÊN KALI TRƯỚC KHI TEST:**
 > ```bash
 > sudo ip route add 10.0.0.0/24 via 192.168.100.20
 > ```
 
-| Kịch bản | Công cụ & Lệnh thực thi từ Kali | Phản ứng Suricata IDS/IPS | Phản ứng Wazuh SIEM & Active Response | Bằng chứng nghiệm thu |
-| :--- | :--- | :--- | :--- | :--- |
-| **TC-01: Quét do thám** | `nmap -sS -p 22,80 10.0.0.10` | Bắt signature `ET SCAN Nmap Scripting Engine User-Agent` trong `eve.json` | Wazuh Dashboard hiển thị Alert Level 6-8, phân loại nhóm `reconnaissance` | Biểu đồ cảnh báo trên Dashboard nhảy số; IP chưa bị chặn |
-| **TC-02: Dò mật khẩu SSH & Tự chặn** | `hydra -l root -P /usr/share/wordlists/rockyou.txt ssh://10.0.0.10 -t 4` | Ghi nhận sự kiện `ET SCAN Potential SSH Scan` | Xâu chuỗi: Log SSH failed liên tiếp $\rightarrow$ kích hoạt Rule 5712 (Level 10) | Terminal Hydra báo `Connection timed out`; `iptables -L` trên Target có dòng DROP IP Kali; Telegram nhận tin báo |
-| **TC-03: Tấn công Web Injection** | `curl "http://10.0.0.10/?id=1'%20OR%20'1'='1"` | Bắt signature `ET WEB_SERVER SQL Injection Attempt` | Kích hoạt cảnh báo Critical (Level 12+), gắn nhãn MITRE ATT&CK T1190 | Suricata ghi log alert; Telegram bắn tin cảnh báo màu đỏ tức thời |
+| Kịch bản | Công cụ & Lệnh thực thi từ Kali | Khung MITRE ATT&CK | Phản ứng Suricata IDS/IPS | Phản ứng Wazuh SIEM & Active Response | Bằng chứng nghiệm thu |
+| :--- | :--- | :---: | :--- | :--- | :--- |
+| **TC-01: Quét do thám** | `nmap -sS -p 22,80 10.0.0.10` | **T1046**<br>**T1595** | Bắt signature `ET SCAN Nmap Scripting Engine User-Agent` trong `eve.json` | Wazuh Dashboard hiển thị Alert Level 6-8, phân loại nhóm `reconnaissance` | Biểu đồ cảnh báo trên Dashboard nhảy số; IP chưa bị chặn |
+| **TC-02: Dò mật khẩu SSH & Tự chặn** | `hydra -l root -P /usr/share/wordlists/rockyou.txt ssh://10.0.0.10 -t 4` | **T1110.001** | Ghi nhận sự kiện `ET SCAN Potential SSH Scan` | **Target OS (Host Log):** Wazuh Agent đọc `/var/log/auth.log` failed 5 lần liên tiếp $\rightarrow$ kích hoạt Rule 5712 (Level 10) $\rightarrow$ gọi `firewall-drop` | Terminal Hydra báo `Connection timed out`; `iptables -L` trên Target có dòng DROP IP Kali; Telegram nhận tin báo |
+| **TC-03: Tấn công Web Injection** | `curl "http://10.0.0.10/?id=1'%20OR%20'1'='1"` | **T1190** | Bắt signature `ET WEB_SERVER SQL Injection Attempt` | Kích hoạt cảnh báo Critical (Level 12+), gắn nhãn MITRE ATT&CK T1190 | Suricata ghi log alert; Telegram bắn tin cảnh báo màu đỏ tức thời |
+| **TC-04: Tải WebShell & Giám sát FIM** | `echo "<?php system(\$_GET['cmd']); ?>" > /var/www/html/shell.php` | **T1505.003**<br>**T1078** | Không can thiệp (lưu lượng tải có thể mã hóa hoặc bypass qua lỗ hổng logic app) | **Wazuh FIM (Syscheck):** Quét real-time thư mục `/var/www/html/`, bắt quả tang file mới sinh $\rightarrow$ Kích hoạt Rule 550 / 554 Level 7+ | Dashboard hiển thị file bị tạo mới, mã băm sha256 và quyền sở hữu; Telegram bắn cảnh báo vi phạm toàn vẹn |
 
 ---
 
@@ -447,16 +462,20 @@ Tạo Template & Clones        Suricata & Nginx             Active Response, Bot
 Chuẩn bị trước câu trả lời cho các câu hỏi giảng viên chắc chắn sẽ hỏi từng thành viên:
 
 ### Câu hỏi cho Thành viên 1 (SIEM & Integration Lead):
-* **Hỏi:** *"Tại sao đã có IDS/IPS rồi mà doanh nghiệp vẫn cần phải đầu tư thêm hệ thống SIEM?"*
+* **Hỏi 1:** *"Tại sao đã có IDS/IPS rồi mà doanh nghiệp vẫn cần phải đầu tư thêm hệ thống SIEM?"*
 * **Trả lời:** IDS/IPS chỉ nhìn thấy lưu lượng mạng đi qua đường truyền và phân tích độc lập từng gói tin. Nó không thể biết chuyện gì xảy ra sâu bên trong máy chủ (như log xác thực đăng nhập hỏng, tệp hệ thống bị thay đổi, tài khoản bị nâng quyền). SIEM đóng vai trò bộ não tập trung: gom cả log mạng từ Suricata và log hệ điều hành từ máy chủ về để **tương quan hóa (correlation)**. Nhờ đó ta phát hiện được các cuộc tấn công phức tạp nhiều giai đoạn (ví dụ: quét mạng bằng Nmap trước, sau đó bruteforce SSH thành công trên máy chủ).
+* **Hỏi 2:** *"Hệ thống Wazuh ánh xạ các sự kiện vào khung MITRE ATT&CK như thế nào?"*
+* **Trả lời:** Mỗi rule định nghĩa trong Wazuh (`ruleset`) đều được gắn kèm các thẻ metadata `<mitre><id>Txxxx</id></mitre>`. Khi log được giải mã qua decoders và khớp với rules, Wazuh Manager sẽ tự động gán nhãn Tactic và Technique tương ứng (ví dụ: Rule 5712 gắn với T1110.001 - Brute Force). Trên Dashboard, nhà phân tích có thể xem trực tiếp ma trận nhiệt (heatmap) để biết hệ thống đang bị đe dọa ở giai đoạn nào của chuỗi tấn công (Kill Chain).
 
 ### Câu hỏi cho Thành viên 2 (Network & Sensor Specialist):
 * **Hỏi:** *"Sự khác biệt căn bản giữa chế độ IDS và IPS của Suricata là gì? Trong lab nhóm triển khai như thế nào?"*
 * **Trả lời:** IDS chỉ đóng vai trò cảm biến thụ động (lắng nghe bản sao gói tin qua SPAN/Mirror port hoặc AF-PACKET) để phát hiện và ghi log cảnh báo mà không làm gián đoạn lưu lượng mạng. Trong khi đó, IPS đứng chắn ngang đường truyền (Inline mode / NFQUEUE), có quyền can thiệp thả (drop) gói tin độc hại ngay lập tức. Trong bài lab, nhóm sử dụng Suricata để soi chiếu sâu gói tin mạng sinh log chuẩn EVE JSON, kết hợp cơ chế Active Response của Wazuh để khóa IP vi phạm qua iptables.
 
 ### Câu hỏi cho Thành viên 3 (Target Admin & Red Team Lead):
-* **Hỏi:** *"Cơ chế Active Response khóa IP kẻ tấn công hoạt động ra sao và làm sao để hệ thống không tự khóa chính mình?"*
+* **Hỏi 1:** *"Cơ chế Active Response khóa IP kẻ tấn công hoạt động ra sao và làm sao để hệ thống không tự khóa chính mình?"*
 * **Trả lời:** Khi Wazuh Manager phát hiện một sự kiện đạt ngưỡng vi phạm (ví dụ Rule ID 5712 khi dò pass SSH sai 5 lần), Manager sẽ phát lệnh xuống Wazuh Agent trên Target Server. Agent sẽ gọi script `firewall-drop` để thêm một dòng `DROP` chứa IP của kẻ tấn công vào đầu bảng `iptables`. Để tránh hệ thống tự khóa chính mình (tự từ chối dịch vụ), nhóm đã cấu hình danh sách loại trừ `<white_list>` trên file `ossec.conf` của Manager chứa IP của Gateway, IP của máy SIEM và dải loopback.
+* **Hỏi 2:** *"Tính năng FIM (File Integrity Monitoring) phát hiện kẻ tấn công sửa đổi file hoặc tải WebShell như thế nào? Có làm nặng máy chủ không?"*
+* **Trả lời:** Wazuh Agent tích hợp module `syscheck`, quét và lưu mã băm mật mã học (MD5, SHA1, SHA256) cùng thuộc tính file (quyền, kích thước, mtime) vào cơ sở dữ liệu SQLite cục bộ. Khi kết hợp cờ `realtime="yes"`, Agent sử dụng API `inotify` của nhân Linux Kernel để lắng nghe trực tiếp sự kiện tệp từ hệ điều hành ngay khi file được tạo hoặc sửa đổi mà không cần quét liên tục, do đó mức tiêu thụ CPU/RAM cực kỳ thấp ($< 1\%$).
 
 ---
 
