@@ -59,13 +59,103 @@ Dự án xây dựng một trung tâm điều hành an ninh mạng (SOC) thu nh�
 
 ---
 
-## 👥 3. Phân công trách nhiệm nhóm 3 người (RACI)
+## 👥 3. Phân công trách nhiệm nhóm 3 người & Hướng dẫn chi tiết
 
-| Thành viên | Vai trò | Phân vùng quản trị | Nhiệm vụ chính |
-| :--- | :--- | :--- | :--- |
-| **Thành viên 1** | **SIEM & Integration Lead** | `Wazuh-SIEM` | Dựng Wazuh Server, cấu hình Decoder/Rules, tích hợp Telegram webhook, quản lý repo Git. |
-| **Thành viên 2** | **Network & Sensor Specialist** | `Suricata-Sensor` | Cấu hình Router NAT 2 card mạng, cài đặt Suricata, viết Signatures (`local.rules`), forward log `eve.json`. |
-| **Thành viên 3** | **Target Admin & Red Team** | `Target-Server` & `Kali` | Cài đặt Nginx/SSH, test Active Response khóa IP, giả lập kịch bản tấn công (Nmap, Hydra, Web Exploit). |
+> 📖 **Tài liệu tham khảo chuyên sâu:** Xem toàn bộ Runbook thiết lập máy ảo VMware, kịch bản vấn đáp và kế hoạch Sprint tại [**docs/Ke_Hoach_Trien_Khai.md**](docs/Ke_Hoach_Trien_Khai.md).
+
+---
+
+### 🟢 THÀNH VIÊN 1: SIEM & Integration Lead (Bộ não trung tâm)
+* **Phân vùng quản lý:** Máy ảo `Wazuh-SIEM` (IP: `192.168.100.10/24`)
+* **Nhánh Git làm việc:** `feature/wazuh-rules-telegram`
+* **Các bước triển khai chi tiết:**
+  1. **Khởi tạo máy ảo Wazuh:** Import file OVA vào VMware, gán RAM 4GB, 2 CPU, card mạng **VMnet8**.
+  2. **Cấu hình IP tĩnh & Hạ RAM Java:**
+     ```bash
+     # Đặt IP tĩnh cho Wazuh Manager
+     sudo nmcli connection modify ens33 ipv4.addresses 192.168.100.10/24 ipv4.gateway 192.168.100.2 ipv4.dns "8.8.8.8,1.1.1.1" ipv4.method manual
+     sudo nmcli connection up ens33
+     # Giảm tải RAM Heap Size tránh treo máy thật
+     sudo sed -i 's/-Xms2g/-Xms1g/g' /etc/wazuh-indexer/jvm.options
+     sudo sed -i 's/-Xmx2g/-Xmx1g/g' /etc/wazuh-indexer/jvm.options
+     sudo systemctl restart wazuh-indexer
+     ```
+  3. **Lấy mật khẩu tài khoản Admin Dashboard:**
+     ```bash
+     sudo tar -O -xvf /home/wazuh-user/wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt
+     ```
+  4. **Cấu hình White-list & Phản ứng tự động (`/var/ossec/etc/ossec.conf`):**
+     * Thêm IP Sensor (`192.168.100.20`, `10.0.0.1`), Target (`10.0.0.10`) và SIEM (`192.168.100.10`) vào thẻ `<white_list>` để tránh tự khóa chính mình.
+     * Cấu hình Active Response gọi `firewall-drop` khi phát hiện Rule 5712 (dò pass SSH) hoặc Rule 100002.
+  5. **Tích hợp Webhook Telegram:**
+     * Viết script `/var/ossec/integrations/custom-telegram.py` và lưu bản sao vào `scripts/custom-telegram.py`.
+     * Phân quyền thực thi: `sudo chmod 750 /var/ossec/integrations/custom-telegram.py && sudo chown root:wazuh /var/ossec/integrations/custom-telegram.py`.
+  6. **Đẩy cấu hình lên Git:** Lưu cấu hình vào `configs/ossec-manager.conf` và `rules/local_rules.xml`.
+
+---
+
+### 🟡 THÀNH VIÊN 2: Network & Sensor Specialist (Cửa ngõ an ninh)
+* **Phân vùng quản lý:** Máy ảo `Suricata-Sensor` (Router 2 card: `192.168.100.20` & `10.0.0.1`)
+* **Nhánh Git làm việc:** `feature/suricata-sensor-nat`
+* **Các bước triển khai chi tiết:**
+  1. **Tạo máy từ Template:** Tạo Linked Clone từ Ubuntu Base, thêm card mạng 2:
+     * Card 1 (`ens33`): VMnet8 (NAT).
+     * Card 2 (`ens34`): VMnet2 (Host-only).
+  2. **Cấu hình Netplan & Kích hoạt Router NAT:**
+     ```bash
+     # Sửa /etc/netplan/00-installer-config.yaml (xem mẫu trong configs/netplan-sensor.yaml)
+     sudo netplan apply
+     # Bật IP Forwarding
+     sudo sysctl -w net.ipv4.ip_forward=1
+     echo "net.ipv4.ip_forward=1" | sudo tee -a /etc/sysctl.conf
+     # Bật NAT Masquerade ra Internet
+     sudo iptables -t nat -A POSTROUTING -o ens33 -j MASQUERADE
+     sudo netfilter-persistent save
+     ```
+  3. **Cài đặt & Cấu hình Suricata:**
+     ```bash
+     sudo add-apt-repository ppa:oisf/suricata-stable -y
+     sudo apt update && sudo apt install suricata jq -y
+     sudo suricata-update
+     ```
+     * Chỉnh file `/etc/suricata/suricata.yaml`: cấu hình `HOME_NET: "[10.0.0.0/24,192.168.100.0/24]"` và cho `af-packet` lắng nghe card mạng nội bộ (`ens34`).
+  4. **Viết Custom Signatures (`/var/lib/suricata/rules/local.rules`):**
+     * Thêm rule phát hiện ICMP Ping, Nmap Scan, SQLi vào `rules/local.rules`.
+     * Kiểm tra log sinh ra: `tail -f /var/log/suricata/eve.json`.
+  5. **Đẩy log Suricata về Wazuh SIEM:**
+     * Cài `wazuh-agent` trỏ về Manager `192.168.100.10`.
+     * Thêm cấu hình đọc file `/var/log/suricata/eve.json` dạng `json` vào file `/var/ossec/etc/ossec.conf`.
+  6. **Đẩy cấu hình lên Git:** Lưu vào `configs/suricata.yaml` và `configs/netplan-sensor.yaml`.
+
+---
+
+### 🔴 THÀNH VIÊN 3: Target Admin & Red Team Lead (Mục tiêu & Tấn công)
+* **Phân vùng quản lý:** Máy ảo `Target-Server` (`10.0.0.10`) & `Attacker-Kali` (`192.168.100.50`)
+* **Nhánh Git làm việc:** `feature/target-hardening-attacks`
+* **Các bước triển khai chi tiết:**
+  1. **Thiết lập máy mục tiêu Target-Server:**
+     * Tạo Linked Clone từ Ubuntu Base, gắn card mạng **VMnet2**.
+     * Đặt IP tĩnh `10.0.0.10/24`, Gateway trỏ về Sensor: `10.0.0.1`.
+     * Kiểm tra thông mạng: `ping -c 3 8.8.8.8` (nếu không thông, báo Thành viên 2 kiểm tra NAT).
+     * Cài đặt Nginx làm Web mục tiêu: `sudo apt update && sudo apt install nginx -y`.
+     * Cài đặt `wazuh-agent`, kích hoạt dịch vụ kết nối về Manager `192.168.100.10`.
+  2. **Thiết lập máy tấn công Kali Linux:**
+     * Gắn card mạng **VMnet8**, đặt IP tĩnh `192.168.100.50/24`.
+     * **Bắt buộc thêm Static Route sang dải Target:**
+       ```bash
+       sudo ip route add 10.0.0.0/24 via 192.168.100.20
+       ```
+     * Kiểm tra kết nối tới web target: `curl -I http://10.0.0.10`.
+  3. **Thực thi 3 kịch bản tấn công kiểm thử:**
+     * **Test 1 (Reconnaissance):** `nmap -sS -p 22,80 10.0.0.10`.
+     * **Test 2 (SSH Brute-force & Trigger Active Response):**
+       ```bash
+       hydra -l root -P /usr/share/wordlists/rockyou.txt ssh://10.0.0.10 -t 4
+       ```
+       *Xác minh:* Kiểm tra terminal Hydra bị `timed out`, trên máy Target chạy `sudo iptables -L -n -v` thấy IP Kali bị `DROP`.
+     * **Test 3 (Web Injection):** `curl "http://10.0.0.10/?id=1'%20OR%20'1'='1"`.
+  4. **Viết script tự động hóa:** Lưu script tấn công vào `scripts/attack_simulation.sh`.
+  5. **Đẩy cấu hình lên Git:** Lưu `configs/netplan-target.yaml` và `scripts/attack_simulation.sh`.
 
 ---
 
