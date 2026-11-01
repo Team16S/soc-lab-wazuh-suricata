@@ -76,4 +76,43 @@ Mỗi khi Agent hoàn thành bất kỳ Issue hoặc chỉnh sửa code nào, **
 ```
 
 ---
-*Mỗi lần Agent xử lý xong Issue, hãy chạy lệnh đối chiếu lại toàn bộ checklist trong `@prompt.md` để đảm bảo hệ thống luôn vận hành ổn định và chính xác 100%.*
+
+## 🚨 PHẦN 3: GIAO THỨC DỪNG KHẨN CẤP KHI VƯỢT QUÁ TẦM KIỂM SOÁT (FAIL-SAFE & ESCALATION)
+
+Khi gặp các tình huống **thiếu sót, sai lệch nghiêm trọng hoặc vượt quá tầm kiểm soát của Agent đối với người dùng**, Agent **TUYỆT ĐỐI KHÔNG ĐƯỢC:**
+* ❌ Tự ý bịa đặt (hallucinate) ra câu trả lời hoặc lệnh không có cơ sở kiểm chứng.
+* ❌ Tự tiện thực thi các lệnh mang tính phá hủy (Destructive actions) như xóa dữ liệu, flush mạng, đổi IP ngoài luồng kế hoạch.
+* ❌ Cố gắng sửa lỗi mù quáng trong một vòng lặp vô tận (Looping failures).
+
+### 1. Các trường hợp kích hoạt cơ chế Dừng Khẩn Cấp (Circuit Breaker):
+1. **Quy tắc 3 lần thất bại (3-Strike Rule):** Nếu Agent thử sửa một lỗi kỹ thuật (dịch vụ không start, agent mất kết nối, lỗi mạng) đến **lần thứ 3** mà vẫn không thành công $\rightarrow$ **DỪNG LẠI NGAY LẬP TỨC**.
+2. **Lỗi phụ thuộc phần cứng máy thật:** Thiếu RAM vật lý, CPU chưa bật cờ ảo hóa trong BIOS (Intel VT-x / AMD-V), xung đột card mạng ảo VMware với Windows Host $\rightarrow$ Agent không thể can thiệp từ terminal, bắt buộc phải báo người dùng.
+3. **Mâu thuẫn yêu cầu (Requirement Conflict):** Yêu cầu mới của người dùng mâu thuẫn trực tiếp với kế hoạch chốt trong `docs/Ke_Hoach_Trien_Khai.md` hoặc làm hỏng phần việc của thành viên khác trong nhóm.
+4. **Nguy cơ mất an toàn dữ liệu:** Thao tác có khả năng làm mất cấu hình, mất quyền root máy ảo hoặc khóa nhầm đường truyền SSH chính mình.
+
+### 2. Định dạng báo cáo bắt buộc gửi Người Dùng khi Leo Thang (Escalation Template):
+
+Khi dừng khẩn cấp, Agent phải xuất trình báo cáo minh bạch theo mẫu sau:
+
+```text
+================================================================================
+🚨 CẢNH BÁO: PHÁT HIỆN SỰ CỐ VƯỢT QUÁ TẦM KIỂM SOÁT CỦA AGENT
+================================================================================
+1. VẤN ĐỀ GẶP PHẢI:
+   [Mô tả chính xác lỗi kỹ thuật / điểm mâu thuẫn / nguyên nhân bế tắc]
+
+2. NGUYÊN NHÂN GỐC RỄ ĐÃ XÁC MINH:
+   [Lý do kỹ thuật thực tế sau khi đã tra soát logs, không phỏng đoán]
+
+3. RỦI RO NẾU TIẾP TỤC TỰ ĐỘNG THỰC THI:
+   [Hậu quả có thể xảy ra: Treo máy ảo, mất kết nối mạng, sai lệch đồ án]
+
+4. CÁC PHƯƠNG ÁN ĐỀ XUẤT CHO NGƯỜI DÙNG QUYẾT ĐỊNH:
+   👉 Phương án A: [Giải pháp 1 - Ưu điểm & Nhược điểm]
+   👉 Phương án B: [Giải pháp 2 - Ưu điểm & Nhược điểm]
+   👉 Phương án C (Khôi phục): Revert về Snapshot VMware hoặc commit Git gần nhất.
+================================================================================
+```
+
+---
+*Mỗi lần Agent xử lý xong Issue, hãy chạy lệnh đối chiếu lại toàn bộ checklist trong `@prompt.md` để đảm bảo hệ thống luôn vận hành ổn định, chính xác 100% và không bao giờ tự ý vượt quá thẩm quyền của người dùng.*
