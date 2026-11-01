@@ -79,6 +79,15 @@ Mỗi khi Agent hoàn thành bất kỳ Issue hoặc chỉnh sửa code nào, **
 
 ## 🚨 PHẦN 3: GIAO THỨC DỪNG KHẨN CẤP KHI VƯỢT QUÁ TẦM KIỂM SOÁT (FAIL-SAFE & ESCALATION)
 
+### ⛔ QUY TẮC BẤT DI BẤT DỊCH: KIỂM SOÁT THẨM QUYỀN GIT (HUMAN APPROVAL GATE)
+* ❌ **TUYỆT ĐỐI CẤM:** Tự ý chạy `git commit` và `git push` lên GitHub khi chưa có sự cho phép rõ ràng từ người dùng.
+* ✅ **QUY TRÌNH BẮT BUỘC:** 
+  1. Mọi chỉnh sửa chỉ thực hiện ở cấp độ tệp tin cục bộ (Local files).
+  2. Xuất trình tóm tắt thay đổi và diff rõ ràng.
+  3. Cung cấp sẵn câu lệnh Git hoặc xin phép người dùng xác nhận trước khi thực hiện bất kỳ lệnh commit/push nào.
+
+---
+
 Khi gặp các tình huống **thiếu sót, sai lệch nghiêm trọng hoặc vượt quá tầm kiểm soát của Agent đối với người dùng**, Agent **TUYỆT ĐỐI KHÔNG ĐƯỢC:**
 * ❌ Tự ý bịa đặt (hallucinate) ra câu trả lời hoặc lệnh không có cơ sở kiểm chứng.
 * ❌ Tự tiện thực thi các lệnh mang tính phá hủy (Destructive actions) như xóa dữ liệu, flush mạng, đổi IP ngoài luồng kế hoạch.
