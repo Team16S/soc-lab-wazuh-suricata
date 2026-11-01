@@ -1,0 +1,45 @@
+# ============================================================
+# GITIGNORE CHO DỰ ÁN SOC LAB (WAZUH + SURICATA)
+# ============================================================
+
+# Tệp tin máy ảo, đĩa cứng & Snapshot VMware
+*.ova
+*.iso
+*.vmdk
+*.vmem
+*.nvram
+*.vmsd
+*.vmx
+*.vmxf
+*.log
+*.gz
+*.tar
+*.zip
+*.7z
+
+# Tệp nhật ký và dữ liệu tự sinh
+*.json
+eve.json
+/var/log/
+*.pcap
+*.pcapng
+
+# Tệp bảo mật, chứng chỉ và cấu hình nhạy cảm
+.env
+*.env
+*_passwords.txt
+wazuh-passwords.txt
+secrets.yml
+*.key
+*.pem
+*.crt
+
+# Tệp rác hệ thống & IDE
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+*~
+
