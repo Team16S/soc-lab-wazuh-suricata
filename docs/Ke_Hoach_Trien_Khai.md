@@ -39,6 +39,25 @@
   * *Phương án A (1 máy $\ge$ 16GB RAM):* Chạy toàn bộ 4 máy ảo trên 1 máy tính để làm demo.
   * *Phương án B (chia tải máy $\le$ 8GB RAM):* Thành viên 1 & 2 chạy Wazuh + Suricata; Thành viên 3 chạy Target + Kali, kết nối qua mạng Bridge hoặc cùng switch ảo.
 
+### 1.3. Sơ đồ dòng chảy dữ liệu sự kiện (Event Data Flow Pipeline)
+```text
+[ Kẻ tấn công (Kali) ] 
+       │ Gói tin độc hại (SYN Scan, SQL Injection)
+       ▼
+[ Cổng Router Gateway (Suricata-Sensor) ]
+       │ 1. AF-PACKET bắt gói theo thời gian thực & đối chiếu Signature ET-Open
+       ▼
+   /var/log/suricata/eve.json
+       │ 2. Wazuh Agent đọc luồng JSON (logcollector)
+       ▼ (Cổng mã hóa 1514 TCP/UDP)
+[ Bộ não trung tâm: Wazuh Manager ]
+       │ 3. Giải mã (Decoders) -> Tương quan hóa (Rules Correlation) -> Gắn nhãn MITRE ATT&CK
+       ├─────────────────────────────────┬─────────────────────────────────┐
+       ▼                                 ▼                                 ▼
+[ Wazuh Indexer & Dashboard ]     [ Active Response Engine ]       [ Telegram Bot Webhook ]
+(Trực quan hóa đồ thị cảnh báo)     (Gửi lệnh DROP IP xuống Target)  (Bắn tin khẩn về điện thoại)
+```
+
 ---
 
 ## 2. BẢNG TỆP TIN CẦN TẢI VỀ MÁY TÍNH
@@ -259,91 +278,242 @@ Tạo Template & Clones        Suricata & Nginx             Active Response, Bot
 
 ---
 
-## 9. HƯỚNG DẪN CẤU HÌNH HỆ THỐNG CHI TIẾT (STEP-BY-STEP RUNBOOK)
+## 9. HƯỚNG DẪN CẤU HÌNH HỆ THỐNG CHI TIẾT THEO TỪNG THÀNH VIÊN (STEP-BY-STEP RUNBOOK)
 
-### 9.1. Cấu hình máy Wazuh-SIEM
-1. Đăng nhập terminal: `wazuh-user` / `wazuh`.
-2. Gán IP tĩnh:
+---
+
+### 🟢 9.1. QUY TRÌNH DÀNH CHO THÀNH VIÊN 1: SIEM & INTEGRATION LEAD
+* **Phân vùng quản lý:** Máy ảo `Wazuh-SIEM` (`192.168.100.10/24`)
+* **Nhánh Git làm việc:** `feature/wazuh-rules-telegram`
+* **Nhiệm vụ cốt lõi:** Dựng máy chủ SIEM, hạ tải RAM OpenSearch, cấu hình phân tích tương quan, thiết lập danh sách trắng (whitelist) chống tự chặn, tích hợp Webhook Telegram bắn cảnh báo khẩn.
+
+#### Bước 1: Khởi động máy ảo và gán IP tĩnh
+1. Import file `.ova` vào VMware (xem lại [Mục 4.2](#bước-42-import-máy-ảo-wazuh-siem-từ-file-ova)).
+2. Đăng nhập terminal: user `wazuh-user` / password `wazuh`.
+3. Gán IP tĩnh và gateway:
    ```bash
    sudo nmcli connection modify ens33 ipv4.addresses 192.168.100.10/24 ipv4.gateway 192.168.100.2 ipv4.dns "8.8.8.8,1.1.1.1" ipv4.method manual
    sudo nmcli connection up ens33
    ```
-3. Giới hạn Heap Size OpenSearch:
-   ```bash
-   sudo sed -i 's/-Xms2g/-Xms1g/g' /etc/wazuh-indexer/jvm.options
-   sudo sed -i 's/-Xmx2g/-Xmx1g/g' /etc/wazuh-indexer/jvm.options
-   sudo systemctl restart wazuh-indexer
-   ```
-4. Đọc mật khẩu admin:
-   ```bash
-   sudo tar -O -xvf /home/wazuh-user/wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt
-   ```
+   *Kiểm tra kết nối:* `ping -c 3 8.8.8.8` và `ip a`.
 
-### 9.2. Cấu hình máy Suricata-Sensor (Router Gateway)
-1. Cấu hình IP tĩnh 2 card mạng (`sudo nano /etc/netplan/00-installer-config.yaml`):
+#### Bước 2: Hạ tải Java Heap Size OpenSearch (Bắt buộc tránh đơ máy thật)
+```bash
+sudo sed -i 's/-Xms2g/-Xms1g/g' /etc/wazuh-indexer/jvm.options
+sudo sed -i 's/-Xmx2g/-Xmx1g/g' /etc/wazuh-indexer/jvm.options
+sudo systemctl restart wazuh-indexer
+```
+
+#### Bước 3: Lấy mật khẩu tài khoản Admin đăng nhập Web Dashboard
+```bash
+sudo tar -O -xvf /home/wazuh-user/wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt
+```
+*Truy cập trình duyệt máy thật:* `https://192.168.100.10` với user `admin` và mật khẩu vừa đọc được ở trên.
+
+#### Bước 4: Mở cổng Firewall UFW đón kết nối Agent
+```bash
+sudo ufw allow 1514/tcp && sudo ufw allow 1514/udp
+sudo ufw allow 1515/tcp
+```
+
+#### Bước 5: Cấu hình White-list và Active Response (`/var/ossec/etc/ossec.conf`)
+Mở file cấu hình trung tâm: `sudo nano /var/ossec/etc/ossec.conf`. Thêm danh sách IP loại trừ và chính sách khóa IP:
+```xml
+<ossec_config>
+  <!-- 1. Danh sách trắng chống tự khóa chính mình -->
+  <global>
+    <white_list>127.0.0.1</white_list>
+    <white_list>192.168.100.10</white_list> <!-- IP Wazuh SIEM -->
+    <white_list>192.168.100.20</white_list> <!-- IP Sensor External -->
+    <white_list>10.0.0.1</white_list>       <!-- IP Sensor Internal Gateway -->
+  </global>
+
+  <!-- 2. Kích hoạt Active Response chặn IP vi phạm -->
+  <active-response>
+    <command>firewall-drop</command>
+    <location>local</location>
+    <rules_id>5712, 100002</rules_id> <!-- Khóa IP khi brute-force SSH hoặc vi phạm nghiêm trọng -->
+    <timeout>600</timeout>            <!-- Thời gian khóa: 10 phút (600 giây) -->
+  </active-response>
+
+  <!-- 3. Tích hợp Webhook đẩy cảnh báo Telegram -->
+  <integration>
+    <name>custom-telegram.py</name>
+    <level>10</level>                 <!-- Chỉ gửi cảnh báo từ Level 10 trở lên -->
+    <hook_url>https://api.telegram.org</hook_url>
+    <alert_format>json</alert_format>
+  </integration>
+</ossec_config>
+```
+
+#### Bước 6: Soạn script Webhook Telegram và cấp quyền thực thi
+Tạo file: `sudo nano /var/ossec/integrations/custom-telegram.py`
+```python
+#!/usr/bin/env python3
+import sys
+import json
+import requests
+
+BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
+CHAT_ID = "YOUR_TELEGRAM_CHAT_ID"
+
+alert_file = sys.argv[1]
+with open(alert_file) as f:
+    alert_json = json.load(f)
+
+rule_id = alert_json.get('rule', {}).get('id', 'N/A')
+description = alert_json.get('rule', {}).get('description', 'N/A')
+level = alert_json.get('rule', {}).get('level', 0)
+src_ip = alert_json.get('data', {}).get('src_ip', alert_json.get('srcip', 'N/A'))
+
+message = (
+    f"🚨 *CẢNH BÁO AN NINH MẠNG (SIEM)* 🚨\n\n"
+    f"📌 *Hành vi:* {description}\n"
+    f"🔢 *Rule ID:* {rule_id} | *Mức độ (Level):* {level}\n"
+    f"🎯 *IP Nguồn Tấn Công:* `{src_ip}`\n"
+)
+
+url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+requests.post(url, json={"chat_id": CHAT_ID, "text": message, "parse_mode": "Markdown"})
+```
+Phân quyền thực thi chuẩn xác:
+```bash
+sudo chmod 750 /var/ossec/integrations/custom-telegram.py
+sudo chown root:wazuh /var/ossec/integrations/custom-telegram.py
+sudo systemctl restart wazuh-manager
+```
+
+---
+
+### 🟡 9.2. QUY TRÌNH DÀNH CHO THÀNH VIÊN 2: NETWORK & SENSOR SPECIALIST
+* **Phân vùng quản lý:** Máy ảo `Suricata-Sensor` (Router 2 card: `192.168.100.20` & `10.0.0.1`)
+* **Nhánh Git làm việc:** `feature/suricata-sensor-nat`
+* **Nhiệm vụ cốt lõi:** Cấu hình 2 card mạng, biến Ubuntu thành Router NAT chuyển tiếp lưu lượng, cài đặt và tối ưu Suricata NIDS/IPS, viết Signatures và forward luồng log `eve.json` về SIEM.
+
+#### Bước 1: Thiết lập card mạng và cấu hình Netplan
+1. Tạo Linked Clone từ `Ubuntu-Template-Base`, gán 2 card mạng:
+   * Card 1 (`ens33`): VMnet8 (NAT).
+   * Card 2 (`ens34`): VMnet2 (Host-only).
+2. Soạn cấu hình IP tĩnh: `sudo nano /etc/netplan/00-installer-config.yaml`:
    ```yaml
    network:
      version: 2
+     renderer: networkd
      ethernets:
        ens33:
          addresses: [192.168.100.20/24]
-         gateway4: 192.168.100.2
+         routes:
+           - to: default
+             via: 192.168.100.2
          nameservers:
            addresses: [8.8.8.8, 1.1.1.1]
        ens34:
          addresses: [10.0.0.1/24]
    ```
-   Chạy lệnh: `sudo netplan apply`.
-2. Bật IP Forwarding và NAT:
-   ```bash
-   sudo sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
-   sudo sysctl -p
-   sudo iptables -t nat -A POSTROUTING -o ens33 -j MASQUERADE
-   sudo netfilter-persistent save
-   ```
-3. Cài đặt Suricata:
-   ```bash
-   sudo add-apt-repository ppa:oisf/suricata-stable -y
-   sudo apt update && sudo apt install suricata jq -y
-   sudo suricata-update
-   ```
-4. Sửa cấu hình `/etc/suricata/suricata.yaml`:
-   * Chỉnh `HOME_NET`: `"[10.0.0.0/24,192.168.100.0/24]"`
-   * Chỉnh `EXTERNAL_NET`: `"!$HOME_NET"`
-   * Tại mục `af-packet:`, kiểm tra `- interface: ens34` (hoặc card mạng LAN nội bộ).
-5. Thêm rule custom kiểm tra ping (`sudo nano /var/lib/suricata/rules/local.rules`):
-   ```text
-   alert icmp any any -> any any (msg:"TEST LAB - PING DETECTED"; sid:1000001; rev:1;)
-   ```
-6. Bật dịch vụ: `sudo systemctl restart suricata`.
+   Áp dụng mạng: `sudo netplan apply`.
 
-### 9.3. Cấu hình máy Target-Server & Cài Agent
-1. Cấu hình IP tĩnh trỏ Gateway về Sensor (`sudo nano /etc/netplan/00-installer-config.yaml`):
-   ```yaml
-   network:
-     version: 2
-     ethernets:
-       ens33:
-         addresses: [10.0.0.10/24]
-         gateway4: 10.0.0.1
-         nameservers:
-           addresses: [8.8.8.8, 1.1.1.1]
-   ```
-   Chạy lệnh: `sudo netplan apply`.  
-   *Kiểm tra thông mạng:* `ping -c 3 8.8.8.8` (phải nhận được phản hồi).
-2. Cài Nginx làm dịch vụ mục tiêu:
-   ```bash
-   sudo apt update && sudo apt install nginx -y
-   ```
-3. Cài đặt Wazuh Agent:
+#### Bước 2: Kích hoạt Router IP Forwarding & NAT Masquerade
+```bash
+# 1. Bật IP Forwarding vĩnh viễn
+sudo sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
+sudo sysctl -p
+
+# 2. Cấu hình iptables NAT chuyển tiếp gói tin từ LAN ra Internet
+sudo iptables -t nat -A POSTROUTING -o ens33 -j MASQUERADE
+sudo netfilter-persistent save
+```
+
+#### Bước 3: Cài đặt Suricata Engine và nạp tập luật ET-Open
+```bash
+sudo add-apt-repository ppa:oisf/suricata-stable -y
+sudo apt update && sudo apt install suricata jq -y
+sudo suricata-update
+```
+
+#### Bước 4: Tinh chỉnh cấu hình Suricata (`/etc/suricata/suricata.yaml`)
+Mở file: `sudo nano /etc/suricata/suricata.yaml`:
+* Tìm mục `HOME_NET`, sửa thành: `"[10.0.0.0/24,192.168.100.0/24]"`
+* Tìm mục `EXTERNAL_NET`, sửa thành: `"!$HOME_NET"`
+* Tại mục `af-packet:`, kiểm tra card mạng lắng nghe lưu lượng nội bộ là `- interface: ens34`.
+
+#### Bước 5: Viết Custom Signatures kiểm thử (`/var/lib/suricata/rules/local.rules`)
+Mở file: `sudo nano /var/lib/suricata/rules/local.rules`:
+```text
+# Rule 1: Phát hiện lưu lượng Ping ICMP kiểm thử kết nối
+alert icmp any any -> any any (msg:"TEST LAB - PING DETECTED"; sid:1000001; rev:1;)
+
+# Rule 2: Phát hiện nỗ lực quét kết nối vào cổng dịch vụ SSH (TCP SYN)
+alert tcp any any -> $HOME_NET 22 (msg:"TEST LAB - SSH CONNECTION ATTEMPT"; flags:S; sid:1000002; rev:1;)
+
+# Rule 3: Phát hiện User-Agent công cụ Nmap quét do thám
+alert http any any -> $HOME_NET any (msg:"TEST LAB - NMAP HTTP PROBE DETECTED"; content:"Nmap Scripting Engine"; http_user_agent; nocase; sid:1000003; rev:1;)
+```
+Khởi động lại Suricata: `sudo systemctl restart suricata`.
+
+#### Bước 6: Cài đặt Wazuh Agent và Forward log `eve.json` về SIEM
+1. Cài đặt Agent:
    ```bash
    curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH.gpg | sudo gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && sudo chmod 644 /usr/share/keyrings/wazuh.gpg
    echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | sudo tee -a /etc/apt/sources.list.d/wazuh.list
    sudo apt update
    sudo WAZUH_MANAGER="192.168.100.10" apt install wazuh-agent -y
    ```
-4. Bật tính năng giám sát toàn vẹn tệp (FIM - Syscheck) chống tải WebShell:
-   Mở `/var/ossec/etc/ossec.conf` trên máy Target, tìm thẻ `<syscheck>` và thêm dòng cấu hình giám sát thời gian thực thư mục Web:
+2. Thêm cấu hình đọc log Suricata: Mở `/var/ossec/etc/ossec.conf`, chèn thêm vào trong thẻ `<ossec_config>`:
+   ```xml
+   <localfile>
+     <log_format>json</log_format>
+     <location>/var/log/suricata/eve.json</location>
+   </localfile>
+   ```
+3. Phân quyền và khởi động lại Agent:
+   ```bash
+   sudo chmod 644 /var/log/suricata/eve.json
+   sudo systemctl enable wazuh-agent && sudo systemctl restart wazuh-agent
+   ```
+
+---
+
+### 🔴 9.3. QUY TRÌNH DÀNH CHO THÀNH VIÊN 3: TARGET ADMIN & RED TEAM LEAD
+* **Phân vùng quản lý:** Máy ảo `Target-Server` (`10.0.0.10`) & `Attacker-Kali` (`192.168.100.50`)
+* **Nhánh Git làm việc:** `feature/target-hardening-attacks`
+* **Nhiệm vụ cốt lõi:** Cấu hình Web Server Nginx, cài Wazuh Agent bật giám sát FIM chống WebShell, định tuyến máy tấn công Kali và chạy kịch bản kiểm thử tấn công.
+
+#### PHẦN A: THIẾT LẬP MÁY MỤC TIÊU (TARGET-SERVER)
+
+##### Bước 1: Cấu hình mạng Netplan trỏ Gateway về Sensor
+1. Tạo Linked Clone từ `Ubuntu-Template-Base`, gán card mạng **VMnet2**.
+2. Soạn cấu hình: `sudo nano /etc/netplan/00-installer-config.yaml`:
+   ```yaml
+   network:
+     version: 2
+     renderer: networkd
+     ethernets:
+       ens33:
+         addresses: [10.0.0.10/24]
+         routes:
+           - to: default
+             via: 10.0.0.1
+         nameservers:
+           addresses: [8.8.8.8, 1.1.1.1]
+   ```
+   Áp dụng: `sudo netplan apply`.  
+   *Kiểm tra thông mạng:* `ping -c 3 8.8.8.8` (Nếu không có mạng, báo Thành viên 2 kiểm tra NAT Forwarding).
+
+##### Bước 2: Cài Nginx Web Server
+```bash
+sudo apt update && sudo apt install nginx -y
+sudo systemctl enable nginx && sudo systemctl start nginx
+```
+
+##### Bước 3: Cài Wazuh Agent và cấu hình Giám sát Toàn vẹn Tệp (FIM)
+1. Cài đặt Agent:
+   ```bash
+   curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH.gpg | sudo gpg --no-default-keyring --keyring gnupg-ring:/usr/share/keyrings/wazuh.gpg --import && sudo chmod 644 /usr/share/keyrings/wazuh.gpg
+   echo "deb [signed-by=/usr/share/keyrings/wazuh.gpg] https://packages.wazuh.com/4.x/apt/ stable main" | sudo tee -a /etc/apt/sources.list.d/wazuh.list
+   sudo apt update
+   sudo WAZUH_MANAGER="192.168.100.10" apt install wazuh-agent -y
+   ```
+2. Cấu hình FIM giám sát thời gian thực thư mục Web: Mở `/var/ossec/etc/ossec.conf`, tìm thẻ `<syscheck>` và cấu hình:
    ```xml
    <syscheck>
      <disabled>no</disabled>
@@ -353,91 +523,40 @@ Tạo Template & Clones        Suricata & Nginx             Active Response, Bot
      <directories check_all="yes" realtime="yes" report_changes="yes">/var/www/html</directories>
    </syscheck>
    ```
-5. Kích hoạt dịch vụ:
+3. Bật dịch vụ:
    ```bash
    sudo systemctl enable wazuh-agent && sudo systemctl restart wazuh-agent
    ```
 
-### 9.4. Đẩy log Suricata từ Sensor về Wazuh
-1. Cài đặt Wazuh Agent lên máy **Suricata-Sensor** (tương tự mục 9.3 bước 3).
-2. Mở `/var/ossec/etc/ossec.conf` trên Sensor, chèn thêm vào trong thẻ `<ossec_config>`:
-   ```xml
-   <localfile>
-     <log_format>json</log_format>
-     <location>/var/log/suricata/eve.json</location>
-   </localfile>
-   ```
-3. Phân quyền và restart Agent:
+---
+
+#### PHẦN B: THIẾT LẬP MÁY TẤN CÔNG (ATTACKER-KALI)
+
+##### Bước 1: Gán mạng và thêm Static Route bắt buộc
+1. Gán card mạng Kali vào **VMnet8 (NAT)**, đặt IP tĩnh `192.168.100.50/24`.
+2. **Lệnh sống còn:** Thêm định tuyến sang mạng nội bộ `10.0.0.0/24` qua Sensor:
    ```bash
-   sudo chmod 644 /var/log/suricata/eve.json
-   sudo systemctl restart wazuh-agent
+   sudo ip route add 10.0.0.0/24 via 192.168.100.20
    ```
+   *Kiểm tra kết nối:* `curl -I http://10.0.0.10` (phải trả về mã `HTTP/1.1 200 OK`).
 
-### 9.5. Cấu hình Active Response & Telegram Alert trên Wazuh Server
-1. Mở `/var/ossec/etc/ossec.conf` trên Wazuh Server, thêm cấu hình White-list và Active Response:
-   ```xml
-   <ossec_config>
-     <global>
-       <white_list>127.0.0.1</white_list>
-       <white_list>192.168.100.10</white_list>
-       <white_list>192.168.100.20</white_list>
-       <white_list>10.0.0.1</white_list>
-     </global>
-
-     <active-response>
-       <command>firewall-drop</command>
-       <location>local</location>
-       <rules_id>5712, 100002</rules_id>
-       <timeout>600</timeout>
-     </active-response>
-
-     <integration>
-       <name>custom-telegram.py</name>
-       <level>10</level>
-       <hook_url>https://api.telegram.org</hook_url>
-       <alert_format>json</alert_format>
-     </integration>
-   </ossec_config>
-   ```
-2. Tạo script Webhook `/var/ossec/integrations/custom-telegram.py`:
-   ```bash
-   sudo nano /var/ossec/integrations/custom-telegram.py
-   ```
-   *Dán mã nguồn Python:*
-   ```python
-   #!/usr/bin/env python3
-   import sys
-   import json
-   import requests
-
-   BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
-   CHAT_ID = "YOUR_TELEGRAM_CHAT_ID"
-
-   alert_file = sys.argv[1]
-   with open(alert_file) as f:
-       alert_json = json.load(f)
-
-   rule_id = alert_json.get('rule', {}).get('id', 'N/A')
-   description = alert_json.get('rule', {}).get('description', 'N/A')
-   level = alert_json.get('rule', {}).get('level', 0)
-   src_ip = alert_json.get('data', {}).get('src_ip', alert_json.get('srcip', 'N/A'))
-
-   message = (
-       f"🚨 *CẢNH BÁO AN NINH MẠNG (SIEM)* 🚨\n\n"
-       f"📌 *Hành vi:* {description}\n"
-       f"🔢 *Rule ID:* {rule_id} | *Mức độ (Level):* {level}\n"
-       f"🎯 *IP Nguồn Tấn Công:* `{src_ip}`\n"
-   )
-
-   url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-   requests.post(url, json={"chat_id": CHAT_ID, "text": message, "parse_mode": "Markdown"})
-   ```
-3. Cấp quyền thực thi bắt buộc:
-   ```bash
-   sudo chmod 750 /var/ossec/integrations/custom-telegram.py
-   sudo chown root:wazuh /var/ossec/integrations/custom-telegram.py
-   sudo systemctl restart wazuh-manager
-   ```
+##### Bước 2: Thực thi các kịch bản kiểm thử tấn công
+* **Test 1 - Quét do thám:** `nmap -sS -p 22,80 10.0.0.10`
+* **Test 2 - Dò mật khẩu SSH & Kích hoạt tự khóa IP:**
+  ```bash
+  hydra -l root -P /usr/share/wordlists/rockyou.txt ssh://10.0.0.10 -t 4
+  ```
+  *(Quan sát: Hydra bị timed out, quay lại máy Target gõ `sudo iptables -L -n -v` thấy IP Kali bị DROP).*
+* **Test 3 - Tấn công Web Injection:**
+  ```bash
+  curl "http://10.0.0.10/?id=1'%20OR%20'1'='1"
+  ```
+* **Test 4 - Tạo WebShell kiểm thử FIM:**
+  ```bash
+  # Trên Target tạo thử file mã độc:
+  sudo bash -c 'echo "<?php system(\$_GET[\"cmd\"]); ?>" > /var/www/html/shell.php'
+  # Quan sát trên Wazuh Dashboard: xuất hiện cảnh báo Integrity Checksum Changed Rule 550
+  ```
 
 ---
 
