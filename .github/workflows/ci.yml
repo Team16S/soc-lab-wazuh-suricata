@@ -2,9 +2,9 @@ name: SOC Lab CI - Syntax & Security Check
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "**" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "**" ]
 
 jobs:
   validate-syntax-and-security:
