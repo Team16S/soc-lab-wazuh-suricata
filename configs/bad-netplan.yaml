@@ -1,0 +1,6 @@
+network:
+  version: 2
+  ethernets:
+    ens33:
+      addresses: [192.168.100.20/24]
+     gateway4: 192.168.100.2 # <--- Lỗi cố tình: thụt lề 5 khoảng trắng thay vì 6 khoảng trắng!
