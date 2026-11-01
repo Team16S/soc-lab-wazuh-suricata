@@ -1,6 +1,10 @@
 # HỆ THỐNG GIÁM SÁT AN NINH MẠNG TẬP TRUNG (SOC LAB)
 ## KẾT HỢP CENTRAL SIEM (WAZUH) VÀ NIDS/IPS (SURICATA) VỚI PHẢN ỨNG TỰ ĐỘNG
 
+[![SOC Lab CI - Syntax & Security Check](https://github.com/USERNAME_OR_ORG/soc-lab-wazuh-suricata/actions/workflows/ci.yml/badge.svg)](https://github.com/USERNAME_OR_ORG/soc-lab-wazuh-suricata/actions/workflows/ci.yml)
+![Defense-in-Depth](https://img.shields.io/badge/Security-Defense--in--Depth-blue)
+![Platform](https://img.shields.io/badge/Platform-VMware%20Workstation-orange)
+
 > **Đồ án môn học:** An ninh mạng  
 > **Mô hình triển khai:** Ảo hóa trên nền tảng VMware Workstation  
 > **Cơ cấu nhóm:** 03 thành viên  
