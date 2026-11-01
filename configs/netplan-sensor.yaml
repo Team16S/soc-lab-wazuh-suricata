@@ -1,0 +1,26 @@
+# ============================================================
+# CẤU HÌNH MẠNG 2 CARD CHO MÁY SURICATA-SENSOR (ROUTER GATEWAY)
+# Áp dụng cho Ubuntu Server 22.04 LTS (/etc/netplan/00-installer-config.yaml)
+# Quản lý bởi: Thành viên 2 (Network & Sensor Specialist)
+# ============================================================
+
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    # Card mạng 1: Kết nối ra ngoài Internet / Dải SIEM (VMnet8 - NAT)
+    ens33:
+      addresses:
+        - 192.168.100.20/24
+      routes:
+        - to: default
+          via: 192.168.100.2
+      nameservers:
+        addresses:
+          - 8.8.8.8
+          - 1.1.1.1
+
+    # Card mạng 2: Cửa ngõ kết nối dải mạng nội bộ (VMnet2 - Internal LAN)
+    ens34:
+      addresses:
+        - 10.0.0.1/24
