@@ -252,7 +252,28 @@ soc-lab-wazuh-suricata/
 
 ---
 
-## 🛠️ 11. Lệnh cứu hộ khẩn cấp (Cheat-Sheet)
+## 🔄 11. Đồng bộ cấu hình từ máy ảo ra Repo (SCP / WinSCP)
+
+Do các máy ảo chạy **Ubuntu Server không có giao diện đồ họa (GUI)**, bạn không thể kéo-thả chuột trực tiếp. Sử dụng PowerShell trên máy thật Windows để tải file cấu hình về repo cực nhanh:
+
+```powershell
+# Đứng tại thư mục gốc repository (d:\AnNinhMang\soc-lab-wazuh-suricata) trên PowerShell máy thật:
+
+# 1. Hút file cấu hình Suricata & Rules từ Sensor (192.168.100.20):
+scp ubuntu@192.168.100.20:/etc/suricata/suricata.yaml ./configs/
+scp ubuntu@192.168.100.20:/var/lib/suricata/rules/local.rules ./rules/
+scp ubuntu@192.168.100.20:/etc/netplan/00-installer-config.yaml ./configs/netplan-sensor.yaml
+
+# 2. Hút file cấu hình Wazuh SIEM & Script Telegram từ SIEM (192.168.100.10):
+scp wazuh-user@192.168.100.10:/var/ossec/etc/ossec.conf ./configs/ossec-manager.conf
+scp wazuh-user@192.168.100.10:/var/ossec/etc/rules/local_rules.xml ./rules/
+scp wazuh-user@192.168.100.10:/var/ossec/integrations/custom-telegram.py ./scripts/
+```
+*(Hoặc dùng phần mềm đồ họa **WinSCP** kết nối qua SFTP Port 22 với tài khoản `ubuntu`/`123` hoặc `wazuh-user`/`wazuh` để kéo thả chuột trực quan).*
+
+---
+
+## 🛠️ 12. Lệnh cứu hộ khẩn cấp (Cheat-Sheet)
 
 ```bash
 # Kiểm tra dịch vụ SIEM:

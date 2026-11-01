@@ -225,6 +225,50 @@ Thumbs.db
   * `feature/target-hardening-attacks` (Thành viên 3)
 * Quy tắc commit: `[loại]: [Mô tả ngắn gọn tiếng Việt không dấu]` (Ví dụ: `feat: Them rule phat hien nmap scan`, `fix: Sua loi netplan card ens34`).
 
+### 5.4. Hướng dẫn đồng bộ tệp cấu hình từ máy ảo ra máy thật (Repository)
+Do các máy ảo chạy hệ điều hành **Ubuntu Server không có giao diện đồ họa (GUI)**, thành viên không thể kéo thả chuột (Drag & Drop). Sử dụng một trong các cách sau để đưa file cấu hình vào repository trên máy thật:
+
+#### Phương pháp 1: Dùng lệnh `scp` từ PowerShell máy thật Windows (Nhanh nhất & Khuyên dùng)
+Mở PowerShell ngay tại thư mục dự án `d:\AnNinhMang\soc-lab-wazuh-suricata` trên máy thật:
+```powershell
+# 1. Lấy cấu hình Suricata & Rules từ Sensor (192.168.100.20):
+scp ubuntu@192.168.100.20:/etc/suricata/suricata.yaml ./configs/
+scp ubuntu@192.168.100.20:/var/lib/suricata/rules/local.rules ./rules/
+scp ubuntu@192.168.100.20:/etc/netplan/00-installer-config.yaml ./configs/netplan-sensor.yaml
+
+# 2. Lấy cấu hình Wazuh Server & Script Telegram từ SIEM (192.168.100.10):
+scp wazuh-user@192.168.100.10:/var/ossec/etc/ossec.conf ./configs/ossec-manager.conf
+scp wazuh-user@192.168.100.10:/var/ossec/etc/rules/local_rules.xml ./rules/
+scp wazuh-user@192.168.100.10:/var/ossec/integrations/custom-telegram.py ./scripts/
+
+# 3. Lấy cấu hình Netplan từ Target (qua IP nội bộ 10.0.0.10 hoặc scp trung gian qua Sensor):
+scp ubuntu@10.0.0.10:/etc/netplan/00-installer-config.yaml ./configs/netplan-target.yaml
+```
+
+#### Phương pháp 2: Sử dụng công cụ WinSCP trên Windows (Giao diện đồ họa SFTP)
+1. Tải và cài đặt phần mềm miễn phí **WinSCP** trên máy thật Windows.
+2. Tạo kết nối **SFTP**:
+   * **Host name:** `192.168.100.10` (Wazuh SIEM) hoặc `192.168.100.20` (Sensor).
+   * **User / Password:** `ubuntu` / `123` hoặc `wazuh-user` / `wazuh`. Port: `22`.
+3. Kéo thả file cấu hình từ cửa sổ bên phải (máy ảo) sang cửa sổ bên trái (thư mục repo trên máy thật).
+
+#### Phương pháp 3: Sử dụng Git trực tiếp bên trong terminal máy ảo (Chuẩn DevSecOps)
+```bash
+# Clone repo trực tiếp trên máy ảo (đã cài sẵn git):
+git clone https://github.com/Team16S/soc-lab-wazuh-suricata.git
+cd soc-lab-wazuh-suricata
+git checkout -b feature/<ten-nhanh-thanh-vien>
+
+# Sao chép file cấu hình vào thư mục làm việc:
+cp /etc/suricata/suricata.yaml configs/
+cp /var/lib/suricata/rules/local.rules rules/
+
+# Commit và đẩy lên GitHub:
+git add .
+git commit -m "feat: Cap nhat file cau hinh tu may ao"
+git push origin feature/<ten-nhanh-thanh-vien>
+```
+
 ---
 
 ## 6. CƠ CẤU NHÓM 3 NGƯỜI & PHÂN CÔNG CHI TIẾT (RACI MATRIX)
