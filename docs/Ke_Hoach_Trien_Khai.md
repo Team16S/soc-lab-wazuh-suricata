@@ -226,48 +226,42 @@ Thumbs.db
 * Quy tắc commit: `[loại]: [Mô tả ngắn gọn tiếng Việt không dấu]` (Ví dụ: `feat: Them rule phat hien nmap scan`, `fix: Sua loi netplan card ens34`).
 
 ### 5.4. Hướng dẫn đồng bộ tệp cấu hình từ máy ảo ra máy thật (Repository)
-Do các máy ảo chạy hệ điều hành **Ubuntu Server không có giao diện đồ họa (GUI)**, thành viên không thể kéo thả chuột (Drag & Drop). Sử dụng một trong các cách sau để đưa file cấu hình vào repository trên máy thật:
+Do các máy ảo chạy hệ điều hành **Ubuntu Server không có giao diện đồ họa (GUI)**, thành viên không thể kéo thả chuột (Drag & Drop). Vì mỗi thành viên làm việc trên máy tính cá nhân quản lý máy ảo riêng, hãy sử dụng bộ lệnh `scp` tương ứng với vai trò của mình từ PowerShell máy thật:
 
-#### Phương pháp 1: Dùng lệnh `scp` từ PowerShell máy thật Windows (Nhanh nhất & Khuyên dùng)
-Mở PowerShell ngay tại thư mục dự án `d:\AnNinhMang\soc-lab-wazuh-suricata` trên máy thật:
+#### 🟢 Dành cho THÀNH VIÊN 1 (Trên máy tính chạy Wazuh-SIEM):
+Mở PowerShell tại thư mục dự án trên máy thật:
 ```powershell
-# 1. Lấy cấu hình Suricata & Rules từ Sensor (192.168.100.20):
-scp ubuntu@192.168.100.20:/etc/suricata/suricata.yaml ./configs/
-scp ubuntu@192.168.100.20:/var/lib/suricata/rules/local.rules ./rules/
-scp ubuntu@192.168.100.20:/etc/netplan/00-installer-config.yaml ./configs/netplan-sensor.yaml
-
-# 2. Lấy cấu hình Wazuh Server & Script Telegram từ SIEM (192.168.100.10):
+# Lấy cấu hình Wazuh Server, Custom Rules và Script Telegram từ SIEM (192.168.100.10):
 scp wazuh-user@192.168.100.10:/var/ossec/etc/ossec.conf ./configs/ossec-manager.conf
 scp wazuh-user@192.168.100.10:/var/ossec/etc/rules/local_rules.xml ./rules/
 scp wazuh-user@192.168.100.10:/var/ossec/integrations/custom-telegram.py ./scripts/
+```
 
-# 3. Lấy cấu hình Netplan từ Target (qua IP nội bộ 10.0.0.10 hoặc scp trung gian qua Sensor):
+#### 🟡 Dành cho THÀNH VIÊN 2 (Trên máy tính chạy Suricata-Sensor):
+Mở PowerShell tại thư mục dự án trên máy thật:
+```powershell
+# Lấy cấu hình Netplan 2 card, Suricata YAML, local.rules và Agent config từ Sensor (192.168.100.20):
+scp ubuntu@192.168.100.20:/etc/netplan/00-installer-config.yaml ./configs/netplan-sensor.yaml
+scp ubuntu@192.168.100.20:/etc/suricata/suricata.yaml ./configs/suricata.yaml
+scp ubuntu@192.168.100.20:/var/lib/suricata/rules/local.rules ./rules/
+scp ubuntu@192.168.100.20:/var/ossec/etc/ossec.conf ./configs/ossec-agent-sensor.conf
+```
+
+#### 🔴 Dành cho THÀNH VIÊN 3 (Trên máy tính chạy Target-Server & Kali Linux):
+Mở PowerShell tại thư mục dự án trên máy thật:
+```powershell
+# 1. Lấy script tấn công tự động từ máy Kali (192.168.100.50):
+scp kali@192.168.100.50:/home/kali/attack_simulation.sh ./scripts/
+
+# 2. Lấy cấu hình Netplan từ máy Target (10.0.0.10 - mạng nội bộ VMnet2):
+# Lưu ý: Do VMnet2 tắt DHCP, để scp được từ Windows, bạn đặt IP tĩnh cho card 'VMware Network Adapter VMnet2' trên máy thật là 10.0.0.254/24:
 scp ubuntu@10.0.0.10:/etc/netplan/00-installer-config.yaml ./configs/netplan-target.yaml
+# (Hoặc đơn giản trên terminal Target gõ 'cat /etc/netplan/00-installer-config.yaml' rồi copy-paste nội dung)
 ```
 
-#### Phương pháp 2: Sử dụng công cụ WinSCP trên Windows (Giao diện đồ họa SFTP)
-1. Tải và cài đặt phần mềm miễn phí **WinSCP** trên máy thật Windows.
-2. Tạo kết nối **SFTP**:
-   * **Host name:** `192.168.100.10` (Wazuh SIEM) hoặc `192.168.100.20` (Sensor).
-   * **User / Password:** `ubuntu` / `123` hoặc `wazuh-user` / `wazuh`. Port: `22`.
-3. Kéo thả file cấu hình từ cửa sổ bên phải (máy ảo) sang cửa sổ bên trái (thư mục repo trên máy thật).
-
-#### Phương pháp 3: Sử dụng Git trực tiếp bên trong terminal máy ảo (Chuẩn DevSecOps)
-```bash
-# Clone repo trực tiếp trên máy ảo (đã cài sẵn git):
-git clone https://github.com/Team16S/soc-lab-wazuh-suricata.git
-cd soc-lab-wazuh-suricata
-git checkout -b feature/<ten-nhanh-thanh-vien>
-
-# Sao chép file cấu hình vào thư mục làm việc:
-cp /etc/suricata/suricata.yaml configs/
-cp /var/lib/suricata/rules/local.rules rules/
-
-# Commit và đẩy lên GitHub:
-git add .
-git commit -m "feat: Cap nhat file cau hinh tu may ao"
-git push origin feature/<ten-nhanh-thanh-vien>
-```
+#### Phương pháp thay thế (Đồ họa & DevSecOps):
+* **Dùng WinSCP:** Kết nối SFTP Port 22 vào IP máy ảo trên máy tính của bạn (`ubuntu`/`123` hoặc `wazuh-user`/`wazuh`) để kéo thả file.
+* **Dùng Git trực tiếp trên máy ảo:** `git clone` repo về máy ảo, copy file vào thư mục và `git push` thẳng lên nhánh cá nhân của bạn.
 
 ---
 

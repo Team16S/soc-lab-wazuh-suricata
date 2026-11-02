@@ -252,24 +252,35 @@ soc-lab-wazuh-suricata/
 
 ---
 
-## 🔄 11. Đồng bộ cấu hình từ máy ảo ra Repo (SCP / WinSCP)
+## 🔄 11. Đồng bộ cấu hình từ máy ảo ra Repo theo từng thành viên (SCP)
 
-Do các máy ảo chạy **Ubuntu Server không có giao diện đồ họa (GUI)**, bạn không thể kéo-thả chuột trực tiếp. Sử dụng PowerShell trên máy thật Windows để tải file cấu hình về repo cực nhanh:
+Mỗi thành viên mở PowerShell tại thư mục dự án trên máy thật của mình (`d:\AnNinhMang\soc-lab-wazuh-suricata`) và chạy bộ lệnh tương ứng với vai trò của mình:
 
-```powershell
-# Đứng tại thư mục gốc repository (d:\AnNinhMang\soc-lab-wazuh-suricata) trên PowerShell máy thật:
+* 🟢 **Thành viên 1 (Máy tính chạy Wazuh-SIEM - 192.168.100.10):**
+  ```powershell
+  scp wazuh-user@192.168.100.10:/var/ossec/etc/ossec.conf ./configs/ossec-manager.conf
+  scp wazuh-user@192.168.100.10:/var/ossec/etc/rules/local_rules.xml ./rules/
+  scp wazuh-user@192.168.100.10:/var/ossec/integrations/custom-telegram.py ./scripts/
+  ```
 
-# 1. Hút file cấu hình Suricata & Rules từ Sensor (192.168.100.20):
-scp ubuntu@192.168.100.20:/etc/suricata/suricata.yaml ./configs/
-scp ubuntu@192.168.100.20:/var/lib/suricata/rules/local.rules ./rules/
-scp ubuntu@192.168.100.20:/etc/netplan/00-installer-config.yaml ./configs/netplan-sensor.yaml
+* 🟡 **Thành viên 2 (Máy tính chạy Suricata-Sensor - 192.168.100.20):**
+  ```powershell
+  scp ubuntu@192.168.100.20:/etc/netplan/00-installer-config.yaml ./configs/netplan-sensor.yaml
+  scp ubuntu@192.168.100.20:/etc/suricata/suricata.yaml ./configs/suricata.yaml
+  scp ubuntu@192.168.100.20:/var/lib/suricata/rules/local.rules ./rules/
+  scp ubuntu@192.168.100.20:/var/ossec/etc/ossec.conf ./configs/ossec-agent-sensor.conf
+  ```
 
-# 2. Hút file cấu hình Wazuh SIEM & Script Telegram từ SIEM (192.168.100.10):
-scp wazuh-user@192.168.100.10:/var/ossec/etc/ossec.conf ./configs/ossec-manager.conf
-scp wazuh-user@192.168.100.10:/var/ossec/etc/rules/local_rules.xml ./rules/
-scp wazuh-user@192.168.100.10:/var/ossec/integrations/custom-telegram.py ./scripts/
-```
-*(Hoặc dùng phần mềm đồ họa **WinSCP** kết nối qua SFTP Port 22 với tài khoản `ubuntu`/`123` hoặc `wazuh-user`/`wazuh` để kéo thả chuột trực quan).*
+* 🔴 **Thành viên 3 (Máy tính chạy Target & Kali):**
+  ```powershell
+  # Lấy script tấn công từ Kali (192.168.100.50):
+  scp kali@192.168.100.50:/home/kali/attack_simulation.sh ./scripts/
+
+  # Lấy cấu hình Netplan Target (10.0.0.10 - VMnet2): 
+  # Gán IP 10.0.0.254 cho card VMnet2 trên Windows rồi gõ scp, hoặc xem trực tiếp bằng 'cat' trên máy ảo Target
+  scp ubuntu@10.0.0.10:/etc/netplan/00-installer-config.yaml ./configs/netplan-target.yaml
+  ```
+*(Ngoài ra, có thể dùng phần mềm đồ họa **WinSCP** kết nối qua SFTP Port 22 để kéo thả trực quan).*
 
 ---
 
