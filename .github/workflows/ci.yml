@@ -19,25 +19,29 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Fast Pass Check (Kiem tra thay doi chi co tai lieu)
+      - name: Smart Document Filter & Fast-Pass Check
         id: filter
         run: |
-          echo "=== Kiem tra cac file thay doi ==="
-          # Neu la Pull Request, so sanh voi nhanh goc (main)
+          echo "=== Kiem tra danh sach cac file thay doi ==="
           if [ "${{ github.event_name }}" = "pull_request" ]; then
             git fetch origin ${{ github.base_ref }} --depth=1 || true
-            CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- configs/ rules/ scripts/ .github/ || true)
+            ALL_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD || true)
           else
-            # Neu la push truc tiep vao main, kiem tra commit gan nhat
-            CHANGED=$(git diff --name-only HEAD~1 HEAD -- configs/ rules/ scripts/ .github/ 2>/dev/null || echo "init")
+            ALL_CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "init")
           fi
 
-          if [ -z "$CHANGED" ]; then
+          echo "Danh sach tep tin trong commit/PR:"
+          echo "$ALL_CHANGED"
+
+          # Loc ra cac file KHONG PHAI tai lieu hop le (.md, docs/*, .gitignore)
+          NON_DOCS=$(echo "$ALL_CHANGED" | grep -v -E '^(\.gitignore|.*\.md|docs/.*)$' || true)
+
+          if [ -z "$NON_DOCS" ] && [ -n "$ALL_CHANGED" ]; then
             echo "IS_DOCS_ONLY=true" >> $GITHUB_ENV
-            echo "⚡ FAST PASS: Commit/PR chi thay doi tai lieu hoac docs. Bo qua cac buoc kiem tra nang de pass CI ngay lap tuc!"
+            echo "⚡ FAST PASS: 100% thay doi chi la tai lieu hop le (*.md, docs/*, .gitignore). Bo qua buoc cai dat tool nang!"
           else
             echo "IS_DOCS_ONLY=false" >> $GITHUB_ENV
-            echo "Phat hien co thay doi trong cac thu muc ky thuat (configs/rules/scripts). Tien hanh kiem tra day du!"
+            echo "Phat hien co file ky thuat hoac file khong thuoc danh muc tai lieu hop le. Kich hoat kiem tra toan dien!"
           fi
 
       - name: Setup Python environment
@@ -143,12 +147,11 @@ jobs:
             echo "==> Tat ca cac file Bash hop le!"
           fi
 
-      - name: 6. Secret Leak Check (Telegram Bot Token & Private Keys)
-        if: env.IS_DOCS_ONLY != 'true'
+      - name: 6. Secret Leak Check (Chay tren toan bo kho ma nguon & ca tai lieu)
         run: |
-          echo "=== Quet chong lo token nhay cam len GitHub public ==="
-          if grep -rEI "[0-9]{8,10}:[a-zA-Z0-9_-]{35}" configs/ scripts/ rules/ 2>/dev/null; then
-            echo "::error::Phat hien Telegram Bot Token that trong code! Hay thay the bang bien moi truong hoac chuoi gia dinh 'YOUR_TELEGRAM_BOT_TOKEN'."
+          echo "=== Quet chong lo token nhay cam tren toan bo kho luu tru ==="
+          if grep -rEI "[0-9]{8,10}:[a-zA-Z0-9_-]{35}" configs/ scripts/ rules/ docs/ *.md 2>/dev/null; then
+            echo "::error::Phat hien Telegram Bot Token that trong kho ma nguon hoac tai lieu! Hay thay the bang chuoi gia dinh 'YOUR_TELEGRAM_BOT_TOKEN'."
             exit 1
           fi
 
@@ -162,7 +165,7 @@ jobs:
       - name: Final Result Status
         run: |
           if [ "${{ env.IS_DOCS_ONLY }}" = "true" ]; then
-            echo "✅ SUCCESS: Hoan tat Fast-Pass cho thay doi tai lieu (Docs-only)."
+            echo "✅ SUCCESS: Hoan tat Fast-Pass cho thay doi tai lieu hop le. Da quet bao mat an toan!"
           else
             echo "✅ SUCCESS: Tat ca cac file ky thuat da PASS 100% (YAML, XML/CONF, RULES, PYTHON, BASH, SECRETS)!"
           fi
