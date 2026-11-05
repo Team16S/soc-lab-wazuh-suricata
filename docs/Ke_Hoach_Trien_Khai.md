@@ -291,6 +291,32 @@ scp ubuntu@10.0.0.10:/etc/netplan/00-installer-config.yaml ./configs/netplan-tar
    * Hệ thống **CI GitHub Actions** đã kích hoạt **Doc Whitelist Fast-Pass**: Mọi PR chỉ sửa đổi tài liệu hợp lệ của đồ án sẽ được thông qua cực nhanh (~10s) mà không bị chặn bởi các bài kiểm tra kỹ thuật nặng.
    * Nhắn tin nhanh vào nhóm chat (Telegram/Zalo) để đồng đội cùng `git pull origin main` cập nhật kiến thức mới nhất.
 
+#### Hướng dẫn chuyển sang nhánh main & kéo dữ liệu mới nhất về máy (Daily Sync Guide)
+Khi nhận được thông báo trong nhóm chat có cập nhật mới vừa được merge vào nhánh `main`:
+
+* **Cách 1: Cập nhật nhánh `main` trên máy tính:**
+  ```bash
+  git checkout main
+  git pull origin main
+  ```
+
+* **Cách 2: Đồng bộ nội dung mới từ `main` vào nhánh cá nhân đang làm dở:**
+  ```bash
+  # Lưu tạm thay đổi dở dang (nếu có):
+  git stash
+
+  # Chuyển sang main và kéo dữ liệu mới:
+  git checkout main
+  git pull origin main
+
+  # Quay lại nhánh công việc và gộp cập nhật từ main vào:
+  git checkout <ten-nhanh-cua-ban>
+  git merge main
+
+  # Lấy lại các thay đổi dở dang để làm tiếp:
+  git stash pop
+  ```
+
 ---
 
 ## 6. CƠ CẤU NHÓM 3 NGƯỜI & PHÂN CÔNG CHI TIẾT (RACI MATRIX)
