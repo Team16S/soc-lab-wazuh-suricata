@@ -60,20 +60,23 @@
 
 ---
 
-## 2. BẢNG TỆP TIN CẦN TẢI VỀ MÁY TÍNH & KHÓA CỨNG PHIÊN BẢN HỆ ĐIỀU HÀNH
+## 2. BẢNG TỆP TIN CẦN TẢI VỀ MÁY TÍNH & KHÓA CỨNG PHIÊN BẢN SỐ CHÍNH XÁC
 
-> ⛔ **CẢNH BÁO TỬ HUYỆT VỀ PHIÊN BẢN HỆ ĐIỀU HÀNH (VERSION COMPATIBILITY WARNING):**
-> * **BẮT BUỘC** tải đúng **Ubuntu Server 22.04 LTS (Jammy Jellyfish)**.
-> * ❌ **TUYỆT ĐỐI KHÔNG TẢI BẢN MỚI NHẤT (Ubuntu 24.04 LTS):** Bản 24.04 đã khai tử hoàn toàn cú pháp Netplan `gateway4`, chặn cài đặt thư viện Python bằng lỗi `PEP 668 (externally-managed-environment)` và thay đổi cơ chế GPG keyring APT khiến toàn bộ các lệnh trong Runbook bị vô hiệu hóa!
+> ⛔ **CẢNH BÁO TỬ HUYỆT VỀ CON SỐ PHIÊN BẢN (VERSION COMPATIBILITY LOCK):**
+> * **Wazuh SIEM (Quan trọng nhất):** Trên menu dropdown phiên bản của trang chủ Wazuh, **BẮT BUỘC CHỌN SỐ: `Version 4.7` HOẶC `Version 4.8`** (File `.ova`).  
+>   ❌ **TUYỆT ĐỐI KHÔNG CHỌN:** Dòng trên cùng `Version 4.14 (current)`. Các bản mới này đã xóa đường dẫn file đọc pass `/home/wazuh-user/wazuh-install-files.tar` và đổi kiến trúc quản lý indexer, khiến lệnh trong Runbook bị vô hiệu hóa!
+> * **Ubuntu Server (Target & Sensor):** BẮT BUỘC tải bản số **`22.04.4 LTS`** hoặc **`22.04.5 LTS`** (`ubuntu-22.04.x-live-server-amd64.iso`).  
+>   ❌ **TUYỆT ĐỐI KHÔNG TẢI:** Bản mới nhất **`Ubuntu 24.04 LTS`** (Khai tử cú pháp Netplan `gateway4`, chặn cài Python bằng lỗi `PEP 668` và lỗi APT GPG key).
 > * Tuyệt đối không tải các bản Desktop có giao diện đồ họa (GUI) gây tràn bộ nhớ RAM.
 
-Cả nhóm chỉ cần chuẩn bị đúng **3 tệp tin** này lưu trữ vào một thư mục chung hoặc USB:
+Cả nhóm chỉ cần chuẩn bị đúng các tệp tin theo con số phiên bản quy định trong bảng sau:
 
-| Tệp tin & Phiên bản CHUẨN | Định dạng | Dung lượng | Nguồn tải chính thức | Hệ điều hành & Môi trường | Mục đích sử dụng |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **1. Wazuh Virtual Appliance v4.8.x** | `.ova` | ~4.5 GB | Trang chủ Wazuh (mục *Virtual Machine appliance / OVA*) | **AlmaLinux / CentOS** (Lệnh: `nmcli`, `systemctl`) | Dựng nhanh cụm SIEM Manager + Indexer + Dashboard |
-| **2. Ubuntu Server 22.04.x LTS** | `.iso` | ~2.5 GB | `releases.ubuntu.com/jammy/` (`ubuntu-22.04.x-live-server-amd64.iso`) | **Ubuntu 22.04 LTS** (Lệnh: `netplan`, `apt`) | Cài máy Template gốc để clone ra Sensor và Target |
-| **3. Kali Linux VMware Pre-built** | `.7z` | ~3.0 GB | `kali.org/get-kali/#kali-virtual-machines` (tab *VMware*) | **Kali Linux (Debian)** (Có sẵn Nmap/Hydra) | Giải nén dùng ngay cho Red Team, chọn "I Copied It" |
+| Thành phần | Con số phiên bản CHÍNH XÁC | Tên tệp tin & Link tải trực tiếp | Dung lượng | Môi trường hệ điều hành | Phiên bản TUYỆT ĐỐI TRÁNH |
+| :--- | :---: | :--- | :--- | :--- | :--- |
+| **Wazuh-SIEM** | **`4.7.x`** hoặc **`4.8.x`** | File `.ova` từ [Trang chủ Wazuh (OVA)](https://wazuh.com) | ~4.5 GB | **AlmaLinux / CentOS** (Lệnh: `nmcli`, `systemctl`) | ❌ Tránh `4.14 (current)` |
+| **Target & Sensor** | **`22.04.4`** hoặc **`22.04.5`** | `ubuntu-22.04.5-live-server-amd64.iso` từ [Ubuntu Jammy](https://releases.ubuntu.com/jammy/) | ~2.5 GB | **Ubuntu 22.04 LTS** (Lệnh: `netplan`, `apt`) | ❌ Tránh `24.04` (Mới nhất) |
+| **Attacker-Kali** | **`2023.4`** hoặc **`2024.1` / `2024.2`** | File `.7z` từ [Kali VMware Pre-built](https://www.kali.org/get-kali/#kali-virtual-machines) | ~3.0 GB | **Kali Linux (Debian)** (Có sẵn Nmap/Hydra) | Bản Installer ISO tự cài |
+| **Suricata Engine** | **`6.0.x`** hoặc **`7.0.x`** | Cài tự động qua PPA `ppa:oisf/suricata-stable` | N/A | NIDS/IPS Engine | Bản mặc định cũ `5.x` |
 
 ---
 
