@@ -3,7 +3,7 @@
 ## ĐỒ ÁN MÔN HỌC: AN NINH MẠNG
 **Đề tài:** Xây dựng hệ thống giám sát an ninh mạng tập trung kết hợp SIEM và IDS/IPS  
 **Cơ cấu nhóm:** 03 thành viên  
-**Đối tượng sử dụng:** Toàn bộ thành viên nhóm dự án (Lưu trữ cục bộ làm tài liệu chuẩn thực hiện, đối phó sự cố và chuẩn bị bảo vệ)
+**Mục đích tài liệu:** Bản thiết kế kỹ thuật chi tiết, cẩm nang thi công từng bước và ngân hàng 20 câu hỏi vấn đáp Viva Voce cho toàn bộ 3 thành viên. *(Bản tóm tắt điều hành, quy hoạch tổng quan & Quick Runbook xem tại [`README.md`](../README.md))*.
 
 ---
 
@@ -291,6 +291,32 @@ scp ubuntu@10.0.0.10:/etc/netplan/00-installer-config.yaml ./configs/netplan-tar
    * Hệ thống **CI GitHub Actions** đã kích hoạt **Doc Whitelist Fast-Pass**: Mọi PR chỉ sửa đổi tài liệu hợp lệ của đồ án sẽ được thông qua cực nhanh (~10s) mà không bị chặn bởi các bài kiểm tra kỹ thuật nặng.
    * Nhắn tin nhanh vào nhóm chat (Telegram/Zalo) để đồng đội cùng `git pull origin main` cập nhật kiến thức mới nhất.
 
+#### Hướng dẫn chuyển sang nhánh main & kéo dữ liệu mới nhất về máy (Daily Sync Guide)
+Khi nhận được thông báo trong nhóm chat có cập nhật mới vừa được merge vào nhánh `main`:
+
+* **Cách 1: Cập nhật nhánh `main` trên máy tính:**
+  ```bash
+  git checkout main
+  git pull origin main
+  ```
+
+* **Cách 2: Đồng bộ nội dung mới từ `main` vào nhánh cá nhân đang làm dở:**
+  ```bash
+  # Lưu tạm thay đổi dở dang (nếu có):
+  git stash
+
+  # Chuyển sang main và kéo dữ liệu mới:
+  git checkout main
+  git pull origin main
+
+  # Quay lại nhánh công việc và gộp cập nhật từ main vào:
+  git checkout <ten-nhanh-cua-ban>
+  git merge main
+
+  # Lấy lại các thay đổi dở dang để làm tiếp:
+  git stash pop
+  ```
+
 ---
 
 ## 6. CƠ CẤU NHÓM 3 NGƯỜI & PHÂN CÔNG CHI TIẾT (RACI MATRIX)
@@ -511,7 +537,10 @@ sudo systemctl restart wazuh-manager
 sudo sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf
 sudo sysctl -p
 
-# 2. Cấu hình iptables NAT chuyển tiếp gói tin từ LAN ra Internet
+# 2. Cài đặt công cụ lưu trữ iptables (Bắt buộc tránh mất rule NAT khi máy reboot)
+sudo apt update && sudo apt install -y iptables-persistent netfilter-persistent
+
+# 3. Cấu hình iptables NAT chuyển tiếp gói tin từ LAN ra Internet
 sudo iptables -t nat -A POSTROUTING -o ens33 -j MASQUERADE
 sudo netfilter-persistent save
 ```
@@ -528,6 +557,7 @@ Mở file: `sudo nano /etc/suricata/suricata.yaml`:
 * Tìm mục `HOME_NET`, sửa thành: `"[10.0.0.0/24,192.168.100.0/24]"`
 * Tìm mục `EXTERNAL_NET`, sửa thành: `"!$HOME_NET"`
 * Tại mục `af-packet:`, kiểm tra card mạng lắng nghe lưu lượng nội bộ là `- interface: ens34`.
+* **Khai báo nạp Custom Signatures (Bắt buộc):** Tìm mục `rule-files:`, thêm dòng `- local.rules` vào danh sách để Suricata nạp và thực thi các signature tự viết.
 
 #### Bước 5: Viết Custom Signatures kiểm thử (`/var/lib/suricata/rules/local.rules`)
 Mở file: `sudo nano /var/lib/suricata/rules/local.rules`:
@@ -558,11 +588,15 @@ Khởi động lại Suricata: `sudo systemctl restart suricata`.
      <location>/var/log/suricata/eve.json</location>
    </localfile>
    ```
-3. Phân quyền và khởi động lại Agent:
+3. Phân quyền thư mục và khởi động lại Agent:
    ```bash
+   # Thêm user wazuh vào group suricata và mở quyền thư mục cha để tránh lỗi Permission Denied khi xoay vòng log:
+   sudo usermod -aG suricata wazuh
+   sudo chmod 755 /var/log/suricata
    sudo chmod 644 /var/log/suricata/eve.json
    sudo systemctl enable wazuh-agent && sudo systemctl restart wazuh-agent
    ```
+   *(Kiểm tra log Agent: `sudo tail -n 20 /var/ossec/logs/ossec.log` không có dòng ERROR Permission Denied là chuẩn).*
 
 ---
 
@@ -631,15 +665,24 @@ sudo systemctl enable nginx && sudo systemctl start nginx
    ```bash
    sudo ip route add 10.0.0.0/24 via 192.168.100.20
    ```
-   *Kiểm tra kết nối:* `curl -I http://10.0.0.10` (phải trả về mã `HTTP/1.1 200 OK`).
+   *Kiểm tra kết nối:* `curl -I http://10.0.0.10` (phải trả về mã `HTTP/1.1 200 OK`).  
+   *(Lưu ý: Lệnh `ip route add` nằm trong RAM, nếu Kali reboot bạn phải chạy lại hoặc đưa vào script `attack_simulation.sh`).*
 
 ##### Bước 2: Thực thi các kịch bản kiểm thử tấn công
+* **Chuẩn bị từ điển trên Kali (Bắt buộc giải nén):**
+  ```bash
+  # Giải nén rockyou.txt (mặc định Kali lưu dạng nén .gz):
+  sudo gunzip -k /usr/share/wordlists/rockyou.txt.gz 2>/dev/null || true
+  # Hoặc tạo file từ điển nhỏ 10 mật khẩu test nhanh:
+  echo -e "123456\npassword\nadmin\nubuntu\nletmein" > ~/test_pass.txt
+  ```
 * **Test 1 - Quét do thám:** `nmap -sS -p 22,80 10.0.0.10`
 * **Test 2 - Dò mật khẩu SSH & Kích hoạt tự khóa IP:**
   ```bash
-  hydra -l root -P /usr/share/wordlists/rockyou.txt ssh://10.0.0.10 -t 4
+  # Nhắm vào user 'ubuntu' (tránh lỗi cấm password root mặc định của Ubuntu 22.04):
+  hydra -l ubuntu -P ~/test_pass.txt ssh://10.0.0.10 -t 4
   ```
-  *(Quan sát: Hydra bị timed out, quay lại máy Target gõ `sudo iptables -L -n -v` thấy IP Kali bị DROP).*
+  *(Quan sát: Hydra bị timed out sau 5 lần sai, quay lại máy Target gõ `sudo iptables -L -n -v` thấy IP Kali `192.168.100.50` bị DROP).*
 * **Test 3 - Tấn công Web Injection:**
   ```bash
   curl "http://10.0.0.10/?id=1'%20OR%20'1'='1"
