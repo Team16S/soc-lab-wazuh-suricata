@@ -1,8 +1,6 @@
 name: SOC Lab CI - Syntax & Security Check
 
 on:
-  push:
-    branches: [ "main", "test-*" ]
   pull_request:
     branches: [ "main" ]
 
