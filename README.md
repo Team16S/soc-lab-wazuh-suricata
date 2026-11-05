@@ -59,8 +59,8 @@ Hệ thống thiết lập một trung tâm điều hành an ninh mạng (SOC) t
 
 | Thành phần | Con số phiên bản CHÍNH XÁC | Tên tệp tin & Link tải trực tiếp | Môi trường hệ điều hành | Phiên bản TUYỆT ĐỐI TRÁNH |
 | :--- | :---: | :--- | :--- | :--- |
-| **Wazuh-SIEM** | **`4.7.x`** hoặc **`4.8.x`** | File `.ova` (~4.5 GB) từ [Wazuh Virtual Appliance](https://wazuh.com) | **AlmaLinux / CentOS** (Lệnh: `nmcli`, `systemctl`) | ❌ Tránh `4.14 (current)` |
-| **Target & Sensor** | **`22.04.4`** hoặc **`22.04.5`** | `ubuntu-22.04.5-live-server-amd64.iso` (~2.5 GB) từ [Ubuntu Jammy](https://releases.ubuntu.com/jammy/) | **Ubuntu 22.04 LTS** (Lệnh: `netplan`, `apt`) | ❌ Tránh `24.04` (Mới nhất) |
+| **Wazuh-SIEM** | **`4.7.x`** hoặc **`4.8.x`** | [`wazuh-4.8.0.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.8.0.ova)<br>*(hoặc xem [Doc Wazuh 4.8 OVA](https://documentation.wazuh.com/4.8/deployment-options/virtual-machine/virtual-machine.html))* | **AlmaLinux / CentOS** (Lệnh: `nmcli`, `systemctl`) | ❌ Tránh `4.14 (current)` |
+| **Target & Sensor** | **`22.04.4`** hoặc **`22.04.5`** | [`ubuntu-22.04.5-live-server-amd64.iso` (Tải trực tiếp)](https://releases.ubuntu.com/jammy/ubuntu-22.04.5-live-server-amd64.iso) | **Ubuntu 22.04 LTS** (Lệnh: `netplan`, `apt`) | ❌ Tránh `24.04` (Mới nhất) |
 | **Attacker-Kali** | **`2023.4`** hoặc **`2024.1` / `2024.2`** | File `.7z` (~3.0 GB) từ [Kali VMware Pre-built](https://www.kali.org/get-kali/#kali-virtual-machines) | **Kali Linux (Debian)** (Có sẵn Nmap/Hydra) | Bản Installer ISO tự cài |
 | **Suricata Engine** | **`6.0.x`** hoặc **`7.0.x`** | Cài tự động qua PPA `ppa:oisf/suricata-stable` | NIDS/IPS Engine | Bản mặc định cũ `5.x` |
 
