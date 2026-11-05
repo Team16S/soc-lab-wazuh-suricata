@@ -33,16 +33,37 @@ jobs:
           echo "Danh sach tep tin trong commit/PR:"
           echo "$ALL_CHANGED"
 
-          # Loc ra cac file KHONG PHAI tai lieu hop le (.md, docs/*, .gitignore)
-          NON_DOCS=$(echo "$ALL_CHANGED" | grep -v -E '^(\.gitignore|.*\.md|docs/.*)$' || true)
+          # Whitelist DUY NHAT cac tai lieu hop le cua do an theo dung kien truc chuan:
+          # - README.md, prompt.md, promp.md, .gitignore
+          # - docs/Ke_Hoach_Trien_Khai.md
+          # - docs/*.png, docs/*.jpg, docs/*.jpeg, docs/*.svg, docs/*.webp (diagram)
+          DOCS_WHITELIST_REGEX='^(\.gitignore|README\.md|prompt\.md|promp\.md|docs/Ke_Hoach_Trien_Khai\.md|docs/.*\.(png|jpg|jpeg|svg|webp))$'
+          NON_DOCS=$(echo "$ALL_CHANGED" | grep -v -E "$DOCS_WHITELIST_REGEX" || true)
 
           if [ -z "$NON_DOCS" ] && [ -n "$ALL_CHANGED" ]; then
             echo "IS_DOCS_ONLY=true" >> $GITHUB_ENV
-            echo "⚡ FAST PASS: 100% thay doi chi la tai lieu hop le (*.md, docs/*, .gitignore). Bo qua buoc cai dat tool nang!"
+            echo "⚡ FAST PASS: 100% thay doi thuoc danh muc tai lieu chuan cua do an. Bo qua buoc cai dat tool nang!"
           else
             echo "IS_DOCS_ONLY=false" >> $GITHUB_ENV
-            echo "Phat hien co file ky thuat hoac file khong thuoc danh muc tai lieu hop le. Kich hoat kiem tra toan dien!"
+            echo "Phat hien co file ky thuat hoac file ngoai danh muc tai lieu chuan. Kich hoat kiem tra toan dien!"
           fi
+
+      - name: Verify Document Whitelist & Structure Integrity
+        run: |
+          echo "=== Kiem tra tinh toan ven danh muc tai lieu do an ==="
+          find . -maxdepth 3 -name "*.md" | grep -v "\.git" | while read -r md_file; do
+            clean_path=$(echo "$md_file" | sed 's|^\./||')
+            case "$clean_path" in
+              "README.md"|"prompt.md"|"promp.md"|"docs/Ke_Hoach_Trien_Khai.md")
+                echo "Valid project document: $clean_path"
+                ;;
+              *)
+                echo "::error file=$clean_path::File tai lieu nay KHONG thuoc danh muc chuan cua de tai do an (soc-lab-wazuh-suricata)! Vui long xoa hoac luu dung quy dinh."
+                exit 1
+                ;;
+            esac
+          done
+          echo "==> Danh muc tai lieu tuan thu 100% cau truc chuan cua do an!"
 
       - name: Setup Python environment
         if: env.IS_DOCS_ONLY != 'true'
