@@ -409,9 +409,8 @@ Tạo Template & Clones        Suricata & Nginx             Active Response, Bot
      ip a show eth0
      ping -c 3 8.8.8.8
      ```
-     > **Mẹo sống còn trên VMware & Minh chứng:**
+     > **Mẹo sống còn trên VMware:**
      > * Thoát con trỏ chuột khỏi màn hình máy ảo VMware ra Windows: Nhấn **`Ctrl + Alt`**.
-     > * Nếu có yêu cầu minh chứng hình ảnh: Lưu ảnh chụp kết quả `ip a show eth0` vào `docs/screenshots/tv1_wazuh_ip_static_ok.png`.
 
 #### Bước 2: Hạ tải Java Heap Size OpenSearch (Bắt buộc tránh đơ máy thật)
 ```bash
