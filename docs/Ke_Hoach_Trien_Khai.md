@@ -73,7 +73,7 @@ Cả nhóm chỉ cần chuẩn bị đúng các tệp tin theo con số phiên b
 
 | Thành phần | Con số phiên bản CHÍNH XÁC | Tên tệp tin & Link tải trực tiếp | Dung lượng | Môi trường hệ điều hành | Phiên bản TUYỆT ĐỐI TRÁNH |
 | :--- | :---: | :--- | :--- | :--- | :--- |
-| **Wazuh-SIEM** | **`4.7.x`** hoặc **`4.8.x`** | • Bản 4.7: [`wazuh-4.7.5.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.7.5.ova) — [Doc Wazuh 4.7](https://documentation.wazuh.com/4.7/deployment-options/virtual-machine/virtual-machine.html)<br>• Bản 4.8: [`wazuh-4.8.0.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.8.0.ova) — [Doc Wazuh 4.8](https://documentation.wazuh.com/4.8/deployment-options/virtual-machine/virtual-machine.html) | ~4.5 GB | **AlmaLinux / CentOS** (Lệnh: `nmcli`, `systemctl`) | ❌ Tránh `4.14 (current)` |
+| **Wazuh-SIEM** | **`4.7.x`** hoặc **`4.8.x`** | • Bản 4.7: [`wazuh-4.7.5.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.7.5.ova) — [Doc Wazuh 4.7](https://documentation.wazuh.com/4.7/deployment-options/virtual-machine/virtual-machine.html)<br>• Bản 4.8: [`wazuh-4.8.0.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.8.0.ova) — [Doc Wazuh 4.8](https://documentation.wazuh.com/4.8/deployment-options/virtual-machine/virtual-machine.html) | ~4.5 GB | **Amazon Linux 2023** (Lệnh: `systemd-networkd`, `systemctl`)<br>*(❌ Không có `nmcli`)* | ❌ Tránh `4.14 (current)` |
 | **Target & Sensor** | **`22.04.4`** hoặc **`22.04.5`** | [`ubuntu-22.04.5-live-server-amd64.iso` (Tải trực tiếp)](https://releases.ubuntu.com/jammy/ubuntu-22.04.5-live-server-amd64.iso) | ~2.5 GB | **Ubuntu 22.04 LTS** (Lệnh: `netplan`, `apt`) | ❌ Tránh `24.04` (Mới nhất) |
 | **Attacker-Kali** | **`2023.4`** hoặc **`2024.1` / `2024.2`** | File `.7z` từ [Kali VMware Pre-built](https://www.kali.org/get-kali/#kali-virtual-machines) | ~3.0 GB | **Kali Linux (Debian)** (Có sẵn Nmap/Hydra) | Bản Installer ISO tự cài |
 | **Suricata Engine** | **`6.0.x`** hoặc **`7.0.x`** | Cài tự động qua PPA `ppa:oisf/suricata-stable` | N/A | NIDS/IPS Engine | Bản mặc định cũ `5.x` |
@@ -336,12 +336,22 @@ Tạo Template & Clones        Suricata & Nginx             Active Response, Bot
 #### Bước 1: Khởi động máy ảo và gán IP tĩnh
 1. Import file `.ova` vào VMware (xem lại [Mục 4.2](#bước-42-import-máy-ảo-wazuh-siem-từ-file-ova)).
 2. Đăng nhập terminal: user `wazuh-user` / password `wazuh`.
-3. Gán IP tĩnh và gateway:
+3. Gán IP tĩnh và gateway bằng `systemd-networkd` *(Wazuh OVA chạy Amazon Linux 2023, không dùng `nmcli`)*:
+   * Chạy `ip link` kiểm tra tên card mạng (thường là `eth0` hoặc `ens33`). Giả sử tên card là `eth0`:
    ```bash
-   sudo nmcli connection modify ens33 ipv4.addresses 192.168.100.10/24 ipv4.gateway 192.168.100.2 ipv4.dns "8.8.8.8,1.1.1.1" ipv4.method manual
-   sudo nmcli connection up ens33
+   sudo tee /etc/systemd/network/10-static-eth0.network << 'EOF'
+[Match]
+Name=eth0
+
+[Network]
+Address=192.168.100.10/24
+Gateway=192.168.100.2
+DNS=8.8.8.8
+DNS=1.1.1.1
+EOF
+   sudo systemctl restart systemd-networkd
    ```
-   *Kiểm tra kết nối:* `ping -c 3 8.8.8.8` và `ip a`.
+   *Kiểm tra kết nối:* `ping -c 3 8.8.8.8` và `ip a show eth0`.
 
 #### Bước 2: Hạ tải Java Heap Size OpenSearch (Bắt buộc tránh đơ máy thật)
 ```bash
@@ -351,15 +361,18 @@ sudo systemctl restart wazuh-indexer
 ```
 
 #### Bước 3: Lấy mật khẩu tài khoản Admin đăng nhập Web Dashboard
+* Trên các bản Wazuh OVA chính thức, tài khoản Web Dashboard mặc định là: `admin` / `admin`.
+* Nếu hệ thống yêu cầu mật khẩu ngẫu nhiên trong quá trình cài đặt, chạy lệnh:
 ```bash
-sudo tar -O -xvf /home/wazuh-user/wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt
+cat /home/wazuh-user/wazuh-passwords.txt 2>/dev/null || sudo tar -O -xvf /home/wazuh-user/wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt 2>/dev/null
 ```
-*Truy cập trình duyệt máy thật:* `https://192.168.100.10` với user `admin` và mật khẩu vừa đọc được ở trên.
+*Truy cập trình duyệt máy thật:* `https://192.168.100.10` với user `admin` và mật khẩu tương ứng.
 
-#### Bước 4: Mở cổng Firewall UFW đón kết nối Agent
+#### Bước 4: Kiểm tra tường lửa đón kết nối Agent
+*Bản OVA chạy Amazon Linux 2023 (quản lý qua `firewalld` thay vì `ufw`):*
 ```bash
-sudo ufw allow 1514/tcp && sudo ufw allow 1514/udp
-sudo ufw allow 1515/tcp
+# Mở cổng nếu firewalld đang bật (nếu firewalld inactive thì các cổng đã thông sẵn):
+sudo firewall-cmd --add-port={1514/tcp,1514/udp,1515/tcp,443/tcp} --permanent 2>/dev/null && sudo firewall-cmd --reload 2>/dev/null || true
 ```
 
 #### Bước 5: Cấu hình White-list và Active Response (`/var/ossec/etc/ossec.conf`)
@@ -669,9 +682,9 @@ Tra cứu và xử lý ngay khi gặp 4 sự cố thường gặp nhất:
 │ 1. Kiểm tra kết nối từ Agent tới Manager:                                   │
 │    nc -zvu 192.168.100.10 1514                                              │
 │    nc -zv 192.168.100.10 1515                                               │
-│ 2. Nếu báo timeout, trên Wazuh Server mở tường lửa UFW:                     │
-│    sudo ufw allow 1514/tcp && sudo ufw allow 1514/udp                       │
-│    sudo ufw allow 1515/tcp                                                  │
+│ 2. Nếu báo timeout, trên Wazuh Server mở cổng tường lửa firewalld:         │
+│    sudo firewall-cmd --add-port={1514/tcp,1514/udp,1515/tcp} --permanent    │
+│    sudo firewall-cmd --reload                                               │
 │ 3. Khởi động lại Agent:                                                     │
 │    sudo systemctl restart wazuh-agent                                       │
 └─────────────────────────────────────────────────────────────────────────────┘

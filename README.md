@@ -59,7 +59,7 @@ Hệ thống thiết lập một trung tâm điều hành an ninh mạng (SOC) t
 
 | Thành phần | Con số phiên bản CHÍNH XÁC | Tên tệp tin & Link tải trực tiếp | Môi trường hệ điều hành | Phiên bản TUYỆT ĐỐI TRÁNH |
 | :--- | :---: | :--- | :--- | :--- |
-| **Wazuh-SIEM** | **`4.7.x`** hoặc **`4.8.x`** | • Bản 4.7: [`wazuh-4.7.5.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.7.5.ova) — [Doc Wazuh 4.7](https://documentation.wazuh.com/4.7/deployment-options/virtual-machine/virtual-machine.html)<br>• Bản 4.8: [`wazuh-4.8.0.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.8.0.ova) — [Doc Wazuh 4.8](https://documentation.wazuh.com/4.8/deployment-options/virtual-machine/virtual-machine.html) | **AlmaLinux / CentOS** (Lệnh: `nmcli`, `systemctl`) | ❌ Tránh `4.14 (current)` |
+| **Wazuh-SIEM** | **`4.7.x`** hoặc **`4.8.x`** | • Bản 4.7: [`wazuh-4.7.5.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.7.5.ova) — [Doc Wazuh 4.7](https://documentation.wazuh.com/4.7/deployment-options/virtual-machine/virtual-machine.html)<br>• Bản 4.8: [`wazuh-4.8.0.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.8.0.ova) — [Doc Wazuh 4.8](https://documentation.wazuh.com/4.8/deployment-options/virtual-machine/virtual-machine.html) | **Amazon Linux 2023** (Lệnh: `systemd-networkd`, `systemctl`)<br>*(❌ Không có `nmcli`)* | ❌ Tránh `4.14 (current)` |
 | **Target & Sensor** | **`22.04.4`** hoặc **`22.04.5`** | [`ubuntu-22.04.5-live-server-amd64.iso` (Tải trực tiếp)](https://releases.ubuntu.com/jammy/ubuntu-22.04.5-live-server-amd64.iso) | **Ubuntu 22.04 LTS** (Lệnh: `netplan`, `apt`) | ❌ Tránh `24.04` (Mới nhất) |
 | **Attacker-Kali** | **`2023.4`** hoặc **`2024.1` / `2024.2`** | File `.7z` (~3.0 GB) từ [Kali VMware Pre-built](https://www.kali.org/get-kali/#kali-virtual-machines) | **Kali Linux (Debian)** (Có sẵn Nmap/Hydra) | Bản Installer ISO tự cài |
 | **Suricata Engine** | **`6.0.x`** hoặc **`7.0.x`** | Cài tự động qua PPA `ppa:oisf/suricata-stable` | NIDS/IPS Engine | Bản mặc định cũ `5.x` |
@@ -123,18 +123,32 @@ Hệ thống thiết lập một trung tâm điều hành an ninh mạng (SOC) t
 * **Máy quản lý:** `Wazuh-SIEM` (`192.168.100.10/24`) | **Nhánh Git:** `feature/wazuh-rules-telegram`
 * **Nhiệm vụ chi tiết:**
   1. Import file `.ova`, đặt RAM 4GB, 2 Cores, mạng **VMnet8**.
-  2. Gán IP tĩnh và hạ Heap RAM OpenSearch (tránh treo máy thật):
+  2. Gán IP tĩnh bằng `systemd-networkd` (Amazon Linux 2023 không dùng `nmcli`) & hạ Heap RAM OpenSearch:
      ```bash
-     sudo nmcli connection modify ens33 ipv4.addresses 192.168.100.10/24 ipv4.gateway 192.168.100.2 ipv4.dns "8.8.8.8,1.1.1.1" ipv4.method manual
-     sudo nmcli connection up ens33
+     # Tạo cấu hình IP tĩnh (kiểm tra card mạng bằng 'ip link', thường là eth0 hoặc ens33):
+     sudo tee /etc/systemd/network/10-static-eth0.network << 'EOF'
+[Match]
+Name=eth0
+
+[Network]
+Address=192.168.100.10/24
+Gateway=192.168.100.2
+DNS=8.8.8.8
+DNS=1.1.1.1
+EOF
+     sudo systemctl restart systemd-networkd
+
+     # Hạ tải Heap RAM OpenSearch (bắt buộc tránh đơ máy thật):
      sudo sed -i 's/-Xms2g/-Xms1g/g' /etc/wazuh-indexer/jvm.options
      sudo sed -i 's/-Xmx2g/-Xmx1g/g' /etc/wazuh-indexer/jvm.options
      sudo systemctl restart wazuh-indexer
      ```
-  3. Lấy mật khẩu admin web Dashboard:
-     ```bash
-     sudo tar -O -xvf /home/wazuh-user/wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt
-     ```
+  3. Đăng nhập Web Dashboard:
+     * Mặc định tài khoản Web bản OVA là: `admin` / `admin`.
+     * Nếu có file mật khẩu ngẫu nhiên, đọc bằng lệnh:
+       ```bash
+       cat /home/wazuh-user/wazuh-passwords.txt 2>/dev/null || sudo tar -O -xvf /home/wazuh-user/wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt 2>/dev/null
+       ```
   4. Cấu hình White-list và Active Response trong `/var/ossec/etc/ossec.conf`:
      * Thêm thẻ `<white_list>` chứa IP Sensor (`192.168.100.20`, `10.0.0.1`), Target (`10.0.0.10`), SIEM (`192.168.100.10`).
      * Thêm `<active-response>` kích hoạt `firewall-drop` với `rules_id`: `5712`.
