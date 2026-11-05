@@ -17,6 +17,40 @@
 
 ---
 
+## ⚡ HƯỚNG DẪN ĐỒNG BỘ DỮ LIỆU NHANH CHO CẢ NHÓM (DAILY GIT SYNC)
+> [!IMPORTANT]
+> **Dành cho mọi thành viên:** Bất cứ khi nào bắt đầu làm việc hoặc thấy nhóm chat thông báo có cập nhật mới vừa merge vào `main`, hãy chạy ngay các lệnh sau để đảm bảo máy của bạn luôn có bản mới nhất:
+
+### Cách 1: Cập nhật nhánh `main` trên máy tính của bạn
+```bash
+# 1. Chuyển sang nhánh main:
+git checkout main
+
+# 2. Kéo toàn bộ code và tài liệu mới nhất về:
+git pull origin main
+```
+
+### Cách 2: Đồng bộ nội dung mới từ `main` vào nhánh cá nhân đang làm dở
+Nếu bạn đang làm dở trên nhánh riêng (ví dụ `feature/wazuh-rules-telegram`):
+```bash
+# Bước 1: Cất tạm các thay đổi dở dang (nếu có):
+git stash
+
+# Bước 2: Chuyển sang main và cập nhật mới nhất:
+git checkout main
+git pull origin main
+
+# Bước 3: Quay lại nhánh cá nhân và gộp cập nhật từ main vào:
+git checkout <ten-nhanh-cua-ban>    # Ví dụ: feature/wazuh-rules-telegram
+git merge main
+
+# Bước 4: Lấy lại các thay đổi dở dang để tiếp tục làm việc:
+git stash pop
+```
+*(Mẹo: Bấm `git stash` để cất tạm thay đổi trước khi checkout, tránh bị lỗi xung đột khi đổi nhánh).*
+
+---
+
 ## 📌 1. Mục tiêu & Phạm vi kỹ thuật
 
 Hệ thống thiết lập một trung tâm điều hành an ninh mạng (SOC) thu nhỏ bảo vệ đa tầng theo chiều sâu (*Defense-in-Depth*):
@@ -362,38 +396,4 @@ Trong quá trình thực hành trên máy ảo VMware, nếu bất kỳ thành v
 3. **Quy trình Git & Hỗ trợ Fast-Pass từ CI:**
    * Tạo commit sửa đổi trên nhánh làm việc cá nhân: `git commit -m "docs: sua buoc X do thuc te tren may ao Y"`.
    * Mở Pull Request vào nhánh `main`. Nhờ hệ thống **CI Fast-Pass Whitelist**, các PR chỉnh sửa tài liệu chuẩn sẽ được CI tự động thông qua chỉ sau ~10 giây (nếu không vi phạm rò rỉ secret).
-   * Báo tin nhanh vào nhóm chat (Telegram/Zalo) để các thành viên khác kéo dữ liệu mới nhất về.
-
-### 🔄 13.1. Hướng dẫn chuyển sang nhánh main & kéo dữ liệu mới nhất về máy (Daily Sync Guide)
-
-Khi nhận được thông báo trong nhóm chat có cập nhật mới vừa được merge vào nhánh `main`:
-
-#### Cách 1: Cập nhật nhánh `main` trên máy tính của bạn
-Mở Git Bash hoặc PowerShell tại thư mục dự án:
-```bash
-# 1. Chuyển sang nhánh main:
-git checkout main
-
-# 2. Kéo toàn bộ code và tài liệu mới nhất về:
-git pull origin main
-```
-
-#### Cách 2: Đồng bộ dữ liệu mới từ `main` vào nhánh công việc bạn đang làm dở
-Nếu bạn đang làm việc trên nhánh cá nhân (ví dụ `feature/wazuh-rules-telegram`) và muốn cập nhật các thay đổi mới nhất từ `main`:
-```bash
-# Bước 1: Lưu tạm các thay đổi dở dang vào ngăn kéo an toàn (nếu có):
-git stash
-
-# Bước 2: Chuyển sang main và cập nhật mới nhất:
-git checkout main
-git pull origin main
-
-# Bước 3: Quay lại nhánh cá nhân và gộp cập nhật từ main vào:
-git checkout feature/wazuh-rules-telegram    # (Thay bằng tên nhánh của bạn)
-git merge main
-
-# Bước 4: Lấy lại các thay đổi dở dang để tiếp tục làm việc:
-git stash pop
-```
-> [!TIP]
-> **Mẹo an toàn khi chuyển nhánh:** Nếu gõ `git checkout main` bị Git chặn do có file sửa đổi chưa commit, chỉ cần gõ `git stash` để cất tạm, sau khi chuyển nhánh và cập nhật xong gõ `git stash pop` để lấy lại, hoàn toàn không sợ bị mất code!
+   * Báo tin nhanh vào nhóm chat (Telegram/Zalo) để các thành viên khác kéo dữ liệu mới nhất về (Xem chi tiết câu lệnh tại [**Hướng dẫn đồng bộ dữ liệu nhanh ở đầu trang**](#-hướng-dẫn-đồng-bộ-dữ-liệu-nhanh-cho-cả-nhóm-daily-git-sync)).
