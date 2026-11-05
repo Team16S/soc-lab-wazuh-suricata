@@ -46,15 +46,18 @@ Hệ thống thiết lập một trung tâm điều hành an ninh mạng (SOC) t
 
 ---
 
-## 💾 3. Bảng tệp tin máy ảo cần chuẩn bị
+## 💾 3. Bảng tệp tin máy ảo & Khóa cứng phiên bản hệ điều hành
 
-Nhóm chỉ cần tải đúng **3 tệp tin** này (tuyệt đối không tải các bản Desktop có GUI gây tràn RAM):
+> ⛔ **CẢNH BÁO TỬ HUYỆT VỀ PHIÊN BẢN (VERSION COMPATIBILITY WARNING):**
+> * **BẮT BUỘC** tải đúng **Ubuntu Server 22.04 LTS (Jammy Jellyfish)**.
+> * ❌ **TUYỆT ĐỐI KHÔNG TẢI BẢN MỚI NHẤT (Ubuntu 24.04 LTS):** Bản 24.04 đã khai tử hoàn toàn cú pháp Netplan `gateway4`, chặn cài đặt thư viện Python bằng lỗi `PEP 668 (externally-managed-environment)` và thay đổi cơ chế GPG keyring APT khiến toàn bộ các lệnh trong Runbook bị vô hiệu hóa!
+> * Tuyệt đối không tải các bản Desktop có giao diện đồ họa (GUI) gây tràn bộ nhớ RAM.
 
-| Tệp tin | Định dạng | Nguồn tải chính thức | Mục đích sử dụng |
-| :--- | :---: | :--- | :--- |
-| **1. Wazuh Virtual Appliance** | `.ova` (~4.5 GB) | Trang chủ Wazuh (*Virtual Machine appliance / OVA*) | Dựng nhanh SIEM Manager + Indexer + Dashboard |
-| **2. Ubuntu Server 22.04 LTS** | `.iso` (~2.5 GB) | `releases.ubuntu.com/jammy/` | Cài Template Base để tạo Linked Clone cho Sensor & Target |
-| **3. Kali Linux VMware Pre-built** | `.7z` (~3.0 GB) | `kali.org/get-kali/#kali-virtual-machines` | Giải nén dùng ngay cho Red Team, chọn "I Copied It" |
+| Tệp tin & Phiên bản CHUẨN | Định dạng & Dung lượng | Nguồn tải chính thức | Hệ điều hành & Môi trường | Mục đích sử dụng |
+| :--- | :---: | :--- | :--- | :--- |
+| **1. Wazuh Virtual Appliance v4.8.x** | `.ova` (~4.5 GB) | [Trang chủ Wazuh (OVA)](https://wazuh.com) | **AlmaLinux / CentOS** (Dùng `nmcli`) | Dựng sẵn SIEM Manager + Indexer + Dashboard |
+| **2. Ubuntu Server 22.04.x LTS** | `.iso` (~2.5 GB) | [releases.ubuntu.com/jammy/](https://releases.ubuntu.com/jammy/) | **Ubuntu 22.04 (Jammy)** (Dùng `netplan`, `apt`) | Cài Template Base để clone ra Sensor & Target |
+| **3. Kali Linux VMware 64-bit** | `.7z` (~3.0 GB) | [kali.org/get-kali/#kali-virtual-machines](https://www.kali.org/get-kali/#kali-virtual-machines) | **Kali Linux (Debian)** (Có sẵn Nmap/Hydra) | Giải nén dùng ngay cho Red Team, chọn "I Copied It" |
 
 ---
 

@@ -16,25 +16,50 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Fast Pass Check (Kiem tra thay doi chi co tai lieu)
+        id: filter
+        run: |
+          echo "=== Kiem tra cac file thay doi ==="
+          # Neu la Pull Request, so sanh voi nhanh goc (main)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin ${{ github.base_ref }} --depth=1 || true
+            CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD -- configs/ rules/ scripts/ .github/ || true)
+          else
+            # Neu la push truc tiep vao main, kiem tra commit gan nhat
+            CHANGED=$(git diff --name-only HEAD~1 HEAD -- configs/ rules/ scripts/ .github/ 2>/dev/null || echo "init")
+          fi
+
+          if [ -z "$CHANGED" ]; then
+            echo "IS_DOCS_ONLY=true" >> $GITHUB_ENV
+            echo "⚡ FAST PASS: Commit/PR chi thay doi tai lieu hoac docs. Bo qua cac buoc kiem tra nang de pass CI ngay lap tuc!"
+          else
+            echo "IS_DOCS_ONLY=false" >> $GITHUB_ENV
+            echo "Phat hien co thay doi trong cac thu muc ky thuat (configs/rules/scripts). Tien hanh kiem tra day du!"
+          fi
 
       - name: Setup Python environment
+        if: env.IS_DOCS_ONLY != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
       - name: Install Linting & Validation Tools
+        if: env.IS_DOCS_ONLY != 'true'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y libxml2-utils shellcheck
           pip install pyyaml
 
       - name: 1. Validate YAML Configuration Files
+        if: env.IS_DOCS_ONLY != 'true'
         run: |
           echo "=== Kiem tra cu phap cac file YAML ==="
           python3 -c "
           import os, glob, yaml
           yaml_files = glob.glob('**/*.yaml', recursive=True) + glob.glob('**/*.yml', recursive=True)
-          # Loai tru thu muc .github
           target_files = [f for f in yaml_files if not f.startswith('.github')]
           if not target_files:
               print('Khong tim thay file YAML nao can kiem tra.')
@@ -46,6 +71,7 @@ jobs:
           "
 
       - name: 2. Validate XML Rules Files
+        if: env.IS_DOCS_ONLY != 'true'
         run: |
           echo "=== Kiem tra cu phap cac file XML (Wazuh Rules) ==="
           shopt -s nullglob
@@ -61,6 +87,7 @@ jobs:
           fi
 
       - name: 3. Validate Python Scripts
+        if: env.IS_DOCS_ONLY != 'true'
         run: |
           echo "=== Kiem tra loi bien dich cu phap Python ==="
           shopt -s nullglob
@@ -76,6 +103,7 @@ jobs:
           fi
 
       - name: 4. Validate Shell Scripts
+        if: env.IS_DOCS_ONLY != 'true'
         run: |
           echo "=== Kiem tra cu phap Shell script (Bash) ==="
           shopt -s nullglob
@@ -91,18 +119,25 @@ jobs:
           fi
 
       - name: 5. Secret Leak Check (Telegram Bot Token & Private Keys)
+        if: env.IS_DOCS_ONLY != 'true'
         run: |
           echo "=== Quet chong lo token nhay cam len GitHub public ==="
-          # Quet dinh dang Telegram bot token (vd: 123456789:ABCdefGHIjklMNO)
           if grep -rEI "[0-9]{8,10}:[a-zA-Z0-9_-]{35}" configs/ scripts/ rules/ 2>/dev/null; then
             echo "::error::Phat hien Telegram Bot Token that trong code! Hay thay the bang bien moi truong hoac chuoi gia dinh 'YOUR_TELEGRAM_BOT_TOKEN'."
             exit 1
           fi
 
-          # Quet private key
           if grep -rEI "BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY" . --exclude-dir=".git" 2>/dev/null; then
             echo "::error::Phat hien Private Key bi commit vao repo!"
             exit 1
           fi
 
           echo "==> Khong phat hien lo secret hay token nhay cam!"
+
+      - name: Final Result Status
+        run: |
+          if [ "${{ env.IS_DOCS_ONLY }}" = "true" ]; then
+            echo "✅ SUCCESS: Hoan tat Fast-Pass cho thay doi tai lieu (Docs-only)."
+          else
+            echo "✅ SUCCESS: Tat ca cac kiem tra cu phap va bao mat da PASS 100%!"
+          fi

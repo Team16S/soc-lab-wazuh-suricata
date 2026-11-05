@@ -60,15 +60,20 @@
 
 ---
 
-## 2. BẢNG TỆP TIN CẦN TẢI VỀ MÁY TÍNH
+## 2. BẢNG TỆP TIN CẦN TẢI VỀ MÁY TÍNH & KHÓA CỨNG PHIÊN BẢN HỆ ĐIỀU HÀNH
 
-Cả nhóm chỉ cần chuẩn bị đúng **3 tệp tin** này lưu trữ vào một thư mục chung hoặc USB (tuyệt đối không tải các bản Desktop có giao diện đồ họa gây tốn RAM):
+> ⛔ **CẢNH BÁO TỬ HUYỆT VỀ PHIÊN BẢN HỆ ĐIỀU HÀNH (VERSION COMPATIBILITY WARNING):**
+> * **BẮT BUỘC** tải đúng **Ubuntu Server 22.04 LTS (Jammy Jellyfish)**.
+> * ❌ **TUYỆT ĐỐI KHÔNG TẢI BẢN MỚI NHẤT (Ubuntu 24.04 LTS):** Bản 24.04 đã khai tử hoàn toàn cú pháp Netplan `gateway4`, chặn cài đặt thư viện Python bằng lỗi `PEP 668 (externally-managed-environment)` và thay đổi cơ chế GPG keyring APT khiến toàn bộ các lệnh trong Runbook bị vô hiệu hóa!
+> * Tuyệt đối không tải các bản Desktop có giao diện đồ họa (GUI) gây tràn bộ nhớ RAM.
 
-| Tệp tin | Định dạng | Dung lượng | Nguồn tải chính thức | Mục đích sử dụng |
-| :--- | :--- | :--- | :--- | :--- |
-| **1. Wazuh Virtual Appliance** | `.ova` | ~4.5 GB | Trang chủ Wazuh (mục *Virtual Machine appliance / OVA*) | Dựng nhanh cụm SIEM Manager + Indexer + Dashboard |
-| **2. Ubuntu Server 22.04 LTS** | `.iso` | ~2.5 GB | `releases.ubuntu.com/jammy/` (`ubuntu-22.04.x-live-server-amd64.iso`) | Cài máy Template gốc để clone ra Sensor và Target |
-| **3. Kali Linux VMware Pre-built** | `.7z` | ~3.0 GB | `kali.org/get-kali/#kali-virtual-machines` (tab *VMware*) | Giải nén dùng ngay cho Red Team, không cần cài |
+Cả nhóm chỉ cần chuẩn bị đúng **3 tệp tin** này lưu trữ vào một thư mục chung hoặc USB:
+
+| Tệp tin & Phiên bản CHUẨN | Định dạng | Dung lượng | Nguồn tải chính thức | Hệ điều hành & Môi trường | Mục đích sử dụng |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **1. Wazuh Virtual Appliance v4.8.x** | `.ova` | ~4.5 GB | Trang chủ Wazuh (mục *Virtual Machine appliance / OVA*) | **AlmaLinux / CentOS** (Lệnh: `nmcli`, `systemctl`) | Dựng nhanh cụm SIEM Manager + Indexer + Dashboard |
+| **2. Ubuntu Server 22.04.x LTS** | `.iso` | ~2.5 GB | `releases.ubuntu.com/jammy/` (`ubuntu-22.04.x-live-server-amd64.iso`) | **Ubuntu 22.04 LTS** (Lệnh: `netplan`, `apt`) | Cài máy Template gốc để clone ra Sensor và Target |
+| **3. Kali Linux VMware Pre-built** | `.7z` | ~3.0 GB | `kali.org/get-kali/#kali-virtual-machines` (tab *VMware*) | **Kali Linux (Debian)** (Có sẵn Nmap/Hydra) | Giải nén dùng ngay cho Red Team, chọn "I Copied It" |
 
 ---
 
