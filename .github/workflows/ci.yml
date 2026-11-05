@@ -53,7 +53,7 @@ jobs:
           sudo apt-get install -y libxml2-utils shellcheck
           pip install pyyaml
 
-      - name: 1. Validate YAML Configuration Files
+      - name: 1. Validate YAML Configuration Files (*.yaml, *.yml)
         if: env.IS_DOCS_ONLY != 'true'
         run: |
           echo "=== Kiem tra cu phap cac file YAML ==="
@@ -70,23 +70,48 @@ jobs:
           print('==> Tat ca cac file YAML hop le!')
           "
 
-      - name: 2. Validate XML Rules Files
+      - name: 2. Validate XML Rules & Config Files (*.xml, *.conf)
         if: env.IS_DOCS_ONLY != 'true'
         run: |
-          echo "=== Kiem tra cu phap cac file XML (Wazuh Rules) ==="
+          echo "=== Kiem tra cu phap cac file XML & Wazuh Config (*.xml, *.conf) ==="
           shopt -s nullglob
-          xml_files=(rules/*.xml configs/*.xml)
+          xml_files=(rules/*.xml configs/*.xml configs/*.conf)
           if [ ${#xml_files[@]} -eq 0 ]; then
-            echo "Chua co file XML trong rules/ hoac configs/."
+            echo "Chua co file XML hoac .conf nao can kiem tra."
           else
             for f in "${xml_files[@]}"; do
               echo "Validating XML: $f"
               xmllint --noout "$f"
             done
-            echo "==> Tat ca cac file XML hop le!"
+            echo "==> Tat ca cac file XML & Wazuh Config (.conf) hop le!"
           fi
 
-      - name: 3. Validate Python Scripts
+      - name: 3. Validate Suricata Rules (*.rules)
+        if: env.IS_DOCS_ONLY != 'true'
+        run: |
+          echo "=== Kiem tra cu phap cac file Suricata Signatures (*.rules) ==="
+          shopt -s nullglob
+          rules_files=(rules/*.rules)
+          if [ ${#rules_files[@]} -eq 0 ]; then
+            echo "Chua co file .rules nao can kiem tra."
+          else
+            for f in "${rules_files[@]}"; do
+              echo "Checking Suricata Rule file: $f"
+              grep -v '^\s*#' "$f" | grep -v '^\s*$' | while read -r line; do
+                if ! echo "$line" | grep -Eq '^(alert|drop|pass|reject)\s+(tcp|udp|icmp|ip|http|dns|tls)\s+'; then
+                  echo "::error file=$f::Rule khong dung cu phap Suricata: $line"
+                  exit 1
+                fi
+                if ! echo "$line" | grep -q 'sid:[0-9]\+;'; then
+                  echo "::error file=$f::Rule thieu truong sid duy nhat: $line"
+                  exit 1
+                fi
+              done
+            done
+            echo "==> Tat ca cac file Suricata Rules hop le!"
+          fi
+
+      - name: 4. Validate Python Scripts (*.py)
         if: env.IS_DOCS_ONLY != 'true'
         run: |
           echo "=== Kiem tra loi bien dich cu phap Python ==="
@@ -102,7 +127,7 @@ jobs:
             echo "==> Tat ca cac file Python khong co loi cu phap!"
           fi
 
-      - name: 4. Validate Shell Scripts
+      - name: 5. Validate Shell Scripts (*.sh)
         if: env.IS_DOCS_ONLY != 'true'
         run: |
           echo "=== Kiem tra cu phap Shell script (Bash) ==="
@@ -118,7 +143,7 @@ jobs:
             echo "==> Tat ca cac file Bash hop le!"
           fi
 
-      - name: 5. Secret Leak Check (Telegram Bot Token & Private Keys)
+      - name: 6. Secret Leak Check (Telegram Bot Token & Private Keys)
         if: env.IS_DOCS_ONLY != 'true'
         run: |
           echo "=== Quet chong lo token nhay cam len GitHub public ==="
@@ -139,5 +164,5 @@ jobs:
           if [ "${{ env.IS_DOCS_ONLY }}" = "true" ]; then
             echo "✅ SUCCESS: Hoan tat Fast-Pass cho thay doi tai lieu (Docs-only)."
           else
-            echo "✅ SUCCESS: Tat ca cac kiem tra cu phap va bao mat da PASS 100%!"
+            echo "✅ SUCCESS: Tat ca cac file ky thuat da PASS 100% (YAML, XML/CONF, RULES, PYTHON, BASH, SECRETS)!"
           fi
