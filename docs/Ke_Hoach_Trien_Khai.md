@@ -273,6 +273,26 @@ scp ubuntu@10.0.0.10:/etc/netplan/00-installer-config.yaml ./configs/netplan-tar
 
 ---
 
+### 5.5. QUY TRÌNH PHẢN HỒI & ĐỒNG BỘ HIỆU CHỈNH TÀI LIỆU (LIVING DOCUMENTATION PROTOCOL)
+Đồ án coi tài liệu là **thực tế sống (Single Source of Truth)**. Trong quá trình các thành viên triển khai trên máy ảo VMware, nếu phát hiện bất kỳ điểm sai khác nào (như câu lệnh không tương thích hệ điều hành, tên card mạng khác `eth0`/`ens33`, thiếu gói tiện ích, lỗi phiên bản):
+
+1. **Quyền hạn & Khuyến khích:** Mọi thành viên đều có toàn quyền và được khuyến khích cập nhật sửa đổi tài liệu ngay lập tức để cả nhóm cùng dùng bản chuẩn nhất.
+2. **Quy tắc sửa đổi đồng bộ:** Bắt buộc cập nhật song song trên cả 2 tệp:
+   * [`README.md`](file:///d:/AnNinhMang/soc-lab-wazuh-suricata/README.md) (Tóm tắt kiến trúc & Runbook cốt lõi)
+   * [`docs/Ke_Hoach_Trien_Khai.md`](file:///d:/AnNinhMang/soc-lab-wazuh-suricata/docs/Ke_Hoach_Trien_Khai.md) (Kế hoạch kỹ thuật chi tiết 13 mục)
+3. **Quy trình Git & Hỗ trợ Fast-Pass từ CI:**
+   * Tạo commit sửa đổi trên nhánh làm việc cá nhân:
+     ```bash
+     git add README.md docs/Ke_Hoach_Trien_Khai.md
+     git commit -m "docs: cap nhat sua buoc X do thuc te may ao Y"
+     git push origin <ten-nhanh>
+     ```
+   * Mở Pull Request hướng về `main`.
+   * Hệ thống **CI GitHub Actions** đã kích hoạt **Doc Whitelist Fast-Pass**: Mọi PR chỉ sửa đổi tài liệu hợp lệ của đồ án sẽ được thông qua cực nhanh (~10s) mà không bị chặn bởi các bài kiểm tra kỹ thuật nặng.
+   * Nhắn tin nhanh vào nhóm chat (Telegram/Zalo) để đồng đội cùng `git pull origin main` cập nhật kiến thức mới nhất.
+
+---
+
 ## 6. CƠ CẤU NHÓM 3 NGƯỜI & PHÂN CÔNG CHI TIẾT (RACI MATRIX)
 
 | Thành viên | Vai trò & Trách nhiệm chính | Phân vùng quản lý | Đầu việc kỹ thuật cụ thể |
@@ -337,21 +357,35 @@ Tạo Template & Clones        Suricata & Nginx             Active Response, Bot
 1. Import file `.ova` vào VMware (xem lại [Mục 4.2](#bước-42-import-máy-ảo-wazuh-siem-từ-file-ova)).
 2. Đăng nhập terminal: user `wazuh-user` / password `wazuh`.
 3. Gán IP tĩnh và gateway bằng `systemd-networkd` *(Wazuh OVA chạy Amazon Linux 2023, không dùng `nmcli`)*:
-   * Chạy `ip link` kiểm tra tên card mạng (thường là `eth0` hoặc `ens33`). Giả sử tên card là `eth0`:
-   ```bash
-   sudo tee /etc/systemd/network/10-static-eth0.network << 'EOF'
-[Match]
-Name=eth0
+   * Chạy `ip link` kiểm tra tên card mạng (thường là `eth0` hoặc `ens33`). Giả sử tên card là `eth0`.
+   * **Bước 3.1: Dọn sạch file rác (nếu lỡ gõ dở dang trước đó):**
+     ```bash
+     sudo rm -f /etc/systemd/network/10-static-eth0.network
+     ```
+   * **Bước 3.2: Dùng trình soạn thảo `vi` (100% có sẵn trên Amazon Linux 2023):**
+     ```bash
+     sudo vi /etc/systemd/network/10-static-eth0.network
+     ```
+     *(Nhấn phím `i` để bắt đầu nhập $\rightarrow$ Gõ nội dung bên dưới $\rightarrow$ Nhấn `Esc` rồi gõ `:wq` và bấm `Enter` để lưu thoát)*
+     ```ini
+     [Match]
+     Name=eth0
 
-[Network]
-Address=192.168.100.10/24
-Gateway=192.168.100.2
-DNS=8.8.8.8
-DNS=1.1.1.1
-EOF
-   sudo systemctl restart systemd-networkd
-   ```
-   *Kiểm tra kết nối:* `ping -c 3 8.8.8.8` và `ip a show eth0`.
+     [Network]
+     Address=192.168.100.10/24
+     Gateway=192.168.100.2
+     DNS=8.8.8.8
+     DNS=1.1.1.1
+     ```
+   * **Bước 3.3: Áp dụng mạng & kiểm tra kết nối:**
+     ```bash
+     sudo systemctl restart systemd-networkd
+     ip a show eth0
+     ping -c 3 8.8.8.8
+     ```
+     > **Mẹo sống còn trên VMware & Minh chứng:**
+     > * Thoát con trỏ chuột khỏi màn hình máy ảo VMware ra Windows: Nhấn **`Ctrl + Alt`**.
+     > * Nếu có yêu cầu minh chứng hình ảnh: Lưu ảnh chụp kết quả `ip a show eth0` vào `docs/screenshots/tv1_wazuh_ip_static_ok.png`.
 
 #### Bước 2: Hạ tải Java Heap Size OpenSearch (Bắt buộc tránh đơ máy thật)
 ```bash

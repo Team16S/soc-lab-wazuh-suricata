@@ -124,25 +124,35 @@ Hệ thống thiết lập một trung tâm điều hành an ninh mạng (SOC) t
 * **Nhiệm vụ chi tiết:**
   1. Import file `.ova`, đặt RAM 4GB, 2 Cores, mạng **VMnet8**.
   2. Gán IP tĩnh bằng `systemd-networkd` (Amazon Linux 2023 không dùng `nmcli`) & hạ Heap RAM OpenSearch:
-     ```bash
-     # Tạo cấu hình IP tĩnh (kiểm tra card mạng bằng 'ip link', thường là eth0 hoặc ens33):
-     sudo tee /etc/systemd/network/10-static-eth0.network << 'EOF'
-[Match]
-Name=eth0
+     * **Bước 2.1: Xóa file rác (nếu lỡ gõ dở dang trước đó):**
+       ```bash
+       sudo rm -f /etc/systemd/network/10-static-eth0.network
+       ```
+     * **Bước 2.2: Dùng trình soạn thảo `vi` (100% có sẵn trên máy ảo):**
+       ```bash
+       sudo vi /etc/systemd/network/10-static-eth0.network
+       ```
+       *(Nhấn phím `i` để bắt đầu nhập $\rightarrow$ Gõ nội dung bên dưới $\rightarrow$ Nhấn `Esc` rồi gõ `:wq` và bấm `Enter` để lưu thoát)*
+       ```ini
+       [Match]
+       Name=eth0
 
-[Network]
-Address=192.168.100.10/24
-Gateway=192.168.100.2
-DNS=8.8.8.8
-DNS=1.1.1.1
-EOF
-     sudo systemctl restart systemd-networkd
-
-     # Hạ tải Heap RAM OpenSearch (bắt buộc tránh đơ máy thật):
-     sudo sed -i 's/-Xms2g/-Xms1g/g' /etc/wazuh-indexer/jvm.options
-     sudo sed -i 's/-Xmx2g/-Xmx1g/g' /etc/wazuh-indexer/jvm.options
-     sudo systemctl restart wazuh-indexer
-     ```
+       [Network]
+       Address=192.168.100.10/24
+       Gateway=192.168.100.2
+       DNS=8.8.8.8
+       DNS=1.1.1.1
+       ```
+     * **Bước 2.3: Áp dụng mạng & hạ tải Heap RAM OpenSearch (tránh đơ máy thật):**
+       ```bash
+       sudo systemctl restart systemd-networkd
+       sudo sed -i 's/-Xms2g/-Xms1g/g' /etc/wazuh-indexer/jvm.options
+       sudo sed -i 's/-Xmx2g/-Xmx1g/g' /etc/wazuh-indexer/jvm.options
+       sudo systemctl restart wazuh-indexer
+       ```
+       > **Mẹo sống còn trên VMware:**
+       > * Thoát con trỏ chuột khỏi màn hình máy ảo VMware ra Windows: Nhấn **`Ctrl + Alt`**.
+       > * Nếu có yêu cầu minh chứng hình ảnh: Lưu ảnh chụp kết quả `ip a show eth0` vào thư mục `docs/screenshots/tv1_wazuh_ip_static_ok.png`.
   3. Đăng nhập Web Dashboard:
      * Mặc định tài khoản Web bản OVA là: `admin` / `admin`.
      * Nếu có file mật khẩu ngẫu nhiên, đọc bằng lệnh:
@@ -324,3 +334,16 @@ sudo iptables -L INPUT -n -v --line-numbers
 # Xóa chặn khẩn cấp toàn bộ iptables (nếu bị tự khóa nhầm):
 sudo iptables -F
 ```
+
+---
+
+## 📝 13. Quy trình phản hồi & Hiệu chỉnh tài liệu nhóm (Living Documentation Protocol)
+
+Trong quá trình thực hành trên máy ảo VMware, nếu bất kỳ thành viên nào phát hiện hướng dẫn bị lệch so với thực tế (lỗi câu lệnh, tên card mạng khác, thiếu gói phần mềm, phiên bản thay đổi):
+
+1. **Khuyến khích hiệu chỉnh ngay:** Mọi thành viên đều có toàn quyền và trách nhiệm cập nhật lại tài liệu để cả nhóm cùng dùng bản chuẩn xác nhất.
+2. **Quy tắc sửa đổi đồng bộ:** Luôn cập nhật song song cả hai tệp: [`README.md`](file:///d:/AnNinhMang/soc-lab-wazuh-suricata/README.md) và [`docs/Ke_Hoach_Trien_Khai.md`](file:///d:/AnNinhMang/soc-lab-wazuh-suricata/docs/Ke_Hoach_Trien_Khai.md).
+3. **Quy trình Git & Hỗ trợ Fast-Pass từ CI:**
+   * Tạo commit sửa đổi trên nhánh làm việc cá nhân: `git commit -m "docs: sua buoc X do thuc te tren may ao Y"`.
+   * Mở Pull Request vào nhánh `main`. Nhờ hệ thống **CI Fast-Pass Whitelist**, các PR chỉnh sửa tài liệu chuẩn sẽ được CI tự động thông qua chỉ sau ~10 giây (nếu không vi phạm rò rỉ secret).
+   * Báo tin nhanh vào nhóm chat (Telegram/Zalo) để các thành viên khác `git pull origin main` cập nhật hướng dẫn mới nhất về máy.
