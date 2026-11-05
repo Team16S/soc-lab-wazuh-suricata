@@ -189,7 +189,6 @@ Hệ thống thiết lập một trung tâm điều hành an ninh mạng (SOC) t
        ```
        > **Mẹo sống còn trên VMware:**
        > * Thoát con trỏ chuột khỏi màn hình máy ảo VMware ra Windows: Nhấn **`Ctrl + Alt`**.
-       > * Nếu có yêu cầu minh chứng hình ảnh: Lưu ảnh chụp kết quả `ip a show eth0` vào thư mục `docs/screenshots/tv1_wazuh_ip_static_ok.png`.
   3. Đăng nhập Web Dashboard:
      * Mặc định tài khoản Web bản OVA là: `admin` / `admin`.
      * Nếu có file mật khẩu ngẫu nhiên, đọc bằng lệnh:

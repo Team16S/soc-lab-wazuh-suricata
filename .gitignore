@@ -34,7 +34,7 @@ secrets.yml
 *.pem
 *.crt
 
-# Tệp rác hệ thống & IDE
+# Thư mục rác hệ thống & IDE
 .DS_Store
 Thumbs.db
 desktop.ini
@@ -42,4 +42,8 @@ desktop.ini
 .vscode/
 *.swp
 *~
+
+# Thư mục cấu hình AI Agent cục bộ (Antigravity Skills)
+.agent/
+
 

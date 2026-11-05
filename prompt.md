@@ -1,4 +1,4 @@
-# 🛡️ GIAO THỨC KIỂM ĐỊNH QA, CHỐNG ẢO GIÁC AI & MINH CHỨNG HÌNH ẢNH (STRICT QA PROTOCOL)
+# 🛡️ GIAO THỨC KIỂM ĐỊNH QA & CHỐNG ẢO GIÁC AI (STRICT QA PROTOCOL)
 
 > **Mục đích:** File này được thiết kế để Agent tự phản biện, kiểm tra chéo và rà soát lại toàn bộ kết quả sau mỗi lần giải quyết Issue/Task trong dự án **SOC Lab (Wazuh + Suricata)**.  
 > **Cơ chế áp dụng:** Agent chỉ cập nhật file này sau mỗi lần hoàn thành task issue. Phải đọc lại trước và sau khi làm task để tránh lặp lại sai lầm, tuyệt đối không được vượt tầm kiểm soát của người dùng.
@@ -7,7 +7,7 @@
 
 ## 🔍 PHẦN 1: BẢN TỰ PHẢN BIỆN CỦA CHUYÊN GIA QA KHẮT KHE (AUDIT TRAIL)
 
-Sau khi đối chiếu nghiêm ngặt với thực tế máy ảo VMware của 3 thành viên, chuyên gia QA chỉ ra **9 điểm sai lệch, thiếu logic và mơ hồ nghiêm trọng** cần được khắc phục triệt để:
+Sau khi đối chiếu nghiêm ngặt với thực tế máy ảo VMware của 3 thành viên, chuyên gia QA chỉ ra **các điểm sai lệch, thiếu logic và mơ hồ nghiêm trọng** cần được khắc phục triệt để:
 
 ### ❌ Điểm sai 1: Ảo giác về công cụ cài sẵn (Khuyên dùng `nano` khi chưa có mạng - TV1)
 * **Lỗi của AI:** Đề xuất "Dùng `sudo nano ...` để trực quan, không lo kẹt lệnh".
@@ -71,50 +71,14 @@ Sau khi đối chiếu nghiêm ngặt với thực tế máy ảo VMware của 3
 ---
 
 ### ❌ Điểm sai 9: Chưa phân định rạch ròi giữa README và Kế hoạch triển khai
-* **Lỗi của AI:** Nhồi nhét lệnh chi tiết vào README làm mất tính tổng quan, hoặc cắt xén kế hoạch triển khai.
 * **Bản sửa đổi chuẩn xác:**
-  * **`README.md`:** Là **Executive Showcase & Quick Runbook** (Bức tranh toàn cảnh, kiến trúc, quy hoạch IP, sơ đồ dữ liệu, bảng RACI tóm tắt, ma trận MITRE, lệnh cứu hộ ngắn).
+  * **`README.md`:** Là **Executive Showcase & Quick Runbook** (Bức tranh toàn cảnh, kiến trúc, quy hoạch IP, hướng dẫn pull/sync nhanh ở đầu trang, bảng RACI tóm tắt, ma trận MITRE, lệnh cứu hộ ngắn).
   * **`docs/Ke_Hoach_Trien_Khai.md`:** Là **Detailed Technical Blueprint & Defense Runbook** (Cẩm nang thi công chi tiết từng bước 9.1, 9.2, 9.3, mẹo sửa lỗi, 20 câu hỏi vấn đáp Viva Voce).
+  * **Minh chứng hình ảnh:** Dự án **KHÔNG YÊU CẦU** lưu ảnh trong Git để giữ repo gọn nhẹ, 100% tập trung vào Live Demo và mã nguồn cấu hình thực tế.
 
 ---
 
-## 📷 PHẦN 2: HƯỚNG DẪN CHỤP ẢNH MINH CHỨNG & ĐƯỜNG DẪN LƯU TRỮ (EVIDENCE PROTOCOL)
-
-Khi thực hiện các bước cấu hình có yêu cầu lưu lại minh chứng thực nghiệm (hoặc khi gặp lỗi cần báo cáo):
-
-### 1. Thư mục lưu trữ chuẩn trong Repository:
-Tất cả ảnh minh chứng của dự án bắt buộc lưu vào thư mục:
-```text
-docs/screenshots/
-```
-*(Nếu thư mục chưa có, tạo bằng lệnh: `mkdir -p docs/screenshots`)*
-
-### 2. Quy tắc đặt tên file ảnh minh chứng:
-Đặt tên viết thường, không dấu, dùng dấu gạch dưới `_` theo cấu trúc:
-`[thanh_vien]_[ten_may_ao]_[noi_dung_minh_chung].png`
-
-*Ví dụ chuẩn xác:*
-* **Thành viên 1:**  
-  `docs/screenshots/tv1_wazuh_ip_static_ok.png` (Minh chứng gán IP tĩnh thành công)  
-  `docs/screenshots/tv1_wazuh_services_active.png` (Minh chứng 3 dịch vụ SIEM đang chạy)  
-  `docs/screenshots/tv1_wazuh_dashboard_login.png` (Minh chứng giao diện Web Dashboard)
-* **Thành viên 2:**  
-  `docs/screenshots/tv2_sensor_2interfaces_ok.png` (Minh chứng 2 card mạng ens33 & ens34)  
-  `docs/screenshots/tv2_sensor_iptables_nat.png` (Minh chứng lệnh iptables NAT MASQUERADE)  
-  `docs/screenshots/tv2_suricata_eve_alert.png` (Minh chứng Suricata ghi alert vào eve.json)
-* **Thành viên 3:**  
-  `docs/screenshots/tv3_target_ping_internet.png` (Minh chứng Target thông mạng qua Sensor)  
-  `docs/screenshots/tv3_target_fim_alert.png` (Minh chứng Wazuh phát hiện sửa đổi file Web)  
-  `docs/screenshots/tv3_target_active_response_drop.png` (Minh chứng iptables tự động chặn IP Kali)
-
-### 3. Cú pháp nhúng ảnh vào Markdown:
-```markdown
-![Mô tả ảnh](docs/screenshots/tv1_wazuh_ip_static_ok.png)
-```
-
----
-
-## 📋 PHẦN 3: CHECKLIST BẮT BUỘC CHẠY LẠI SAU MỖI TASK/ISSUE
+## 📋 PHẦN 2: CHECKLIST BẮT BUỘC CHẠY LẠI SAU MỖI TASK/ISSUE
 
 Mỗi khi Agent hoàn thành bất kỳ Issue nào, **BẮT BUỘC** phải rà soát qua 6 cánh cổng kiểm định sau:
 
@@ -131,28 +95,26 @@ Mỗi khi Agent hoàn thành bất kỳ Issue nào, **BẮT BUỘC** phải rà 
 [ ] IP đúng chuẩn: Wazuh (192.168.100.10), Sensor (ens33: 192.168.100.20, ens34: 10.0.0.1), Target (10.0.0.10), Kali (192.168.100.50)?
 [ ] Đã cấu hình white-list tránh Active Response tự chặn nhầm Gateway 10.0.0.1 chưa?
 
-[CỔNG 3: MINH CHỨNG HÌNH ẢNH (NẾU CÓ YÊU CẦU)]
-[ ] Ảnh chụp màn hình có được lưu đúng thư mục docs/screenshots/ không?
-[ ] Tên file ảnh có đúng định dạng: tvX_mayao_noidung.png không?
-[ ] Đã tạo liên kết markdown hiển thị ảnh trong tài liệu chưa?
-
-[CỔNG 4: AN TOÀN BẢO MẬT DỮ LIỆU (ZERO LEAK)]
+[CỔNG 3: AN TOÀN BẢO MẬT DỮ LIỆU (ZERO LEAK)]
 [ ] Tuyệt đối không chứa Telegram Bot Token thật?
 [ ] Tuyệt đối không commit file mật khẩu, file log eve.json hay ổ đĩa máy ảo .vmdk?
 
-[CỔNG 5: QUY CHUẨN NHÁNH GIT (BRANCH GOVERNANCE)]
+[CỔNG 4: QUY CHUẨN NHÁNH GIT (BRANCH GOVERNANCE)]
 [ ] TUYỆT ĐỐI KHÔNG làm việc trên nhánh main!
 [ ] TUYỆT ĐỐI KHÔNG làm việc trên các nhánh đã hoàn thành trong quá khứ!
-[ ] Đang làm việc trên đúng NHÁNH CÔNG VIỆC HIỆN TẠI (VD: feature/..., fix/...)?
+[ ] Đang làm việc trên đúng NHÁNH CÔNG VIỆI HIỆN TẠI (VD: feature/..., fix/...)?
 
-[CỔNG 6: TÀI LIỆU HÓA ĐỒNG BỘ (SINGLE SOURCE OF TRUTH)]
+[CỔNG 5: TÀI LIỆU HÓA ĐỒNG BỘ (SINGLE SOURCE OF TRUTH)]
 [ ] Phân định rõ ràng: README.md (Executive Showcase & Quick Runbook) vs Ke_Hoach_Trien_Khai.md (Detailed Technical Blueprint)?
 [ ] Mọi thay đổi kỹ thuật mới đã được cập nhật đồng bộ song song vào README.md và docs/Ke_Hoach_Trien_Khai.md chưa?
+
+[CỔNG 6: TẬP TRUNG LIVE DEMO & KHÔNG RÁC ẢNH]
+[ ] Không yêu cầu tạo thư mục screenshots hay nhồi nhét ảnh vào Git repo, bảo toàn repo sạch đẹp chuẩn code kỹ thuật!
 ```
 
 ---
 
-## 🚨 PHẦN 4: GIAO THỨC DỪNG KHẨN CẤP & KIỂM SOÁT THẨM QUYỀN (HUMAN APPROVAL GATE)
+## 🚨 PHẦN 3: GIAO THỨC DỪNG KHẨN CẤP & KIỂM SOÁT THẨM QUYỀN (HUMAN APPROVAL GATE)
 
 ### ⛔ QUY TẮC BẤT DI BẤT DỊCH:
 1. **NGHIÊM CẤM** tự ý chạy `git commit` hoặc `git push` lên GitHub khi chưa có sự xác nhận rõ ràng của người dùng trong lượt hội thoại hiện tại.
