@@ -10,7 +10,10 @@
 > **Đồ án môn học:** An ninh mạng  
 > **Mô hình triển khai:** Cụm 4 máy ảo trên nền tảng VMware Workstation (Chạy trên 1 máy $\ge 16\text{GB}$ RAM hoặc chia tải 2 máy $\le 8\text{GB}$ RAM)  
 > **Cơ cấu nhóm:** 03 thành viên  
-> **Tài liệu tham khảo chuyên sâu:** Xem toàn bộ Runbook chi tiết, kế hoạch Sprint và kịch bản vấn đáp tại [**docs/Ke_Hoach_Trien_Khai.md**](docs/Ke_Hoach_Trien_Khai.md).
+> 
+> 🧭 **Phân định cấu trúc tài liệu dự án:**
+> * **[`README.md`](README.md):** Bản tóm tắt điều hành & Quick Runbook (Kiến trúc tổng quan, quy hoạch IP, phân công RACI, lệnh chạy nhanh, ma trận MITRE ATT&CK, chỉ số KPI).
+> * **[`docs/Ke_Hoach_Trien_Khai.md`](docs/Ke_Hoach_Trien_Khai.md):** Bản thiết kế kỹ thuật chi tiết & Cẩm nang bảo vệ đồ án 14 mục (Hướng dẫn VMware từng bước, chi tiết lệnh 9.1-9.2-9.3, 20 câu hỏi & trả lời vấn đáp Viva Voce).
 
 ---
 
@@ -175,19 +178,23 @@ Hệ thống thiết lập một trung tâm điều hành an ninh mạng (SOC) t
      ```yaml
      network:
        version: 2
+       renderer: networkd
        ethernets:
          ens33:
            addresses: [192.168.100.20/24]
-           gateway4: 192.168.100.2
+           routes:
+             - to: default
+               via: 192.168.100.2
            nameservers:
              addresses: [8.8.8.8, 1.1.1.1]
          ens34:
            addresses: [10.0.0.1/24]
      ```
      Chạy `sudo netplan apply`.
-  3. Bật IP Forwarding và NAT Masquerade:
+  3. Bật IP Forwarding và NAT Masquerade (Bắt buộc cài iptables-persistent tránh mất rule khi reboot):
      ```bash
      sudo sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf && sudo sysctl -p
+     sudo apt update && sudo apt install -y iptables-persistent netfilter-persistent
      sudo iptables -t nat -A POSTROUTING -o ens33 -j MASQUERADE
      sudo netfilter-persistent save
      ```
@@ -196,8 +203,12 @@ Hệ thống thiết lập một trung tâm điều hành an ninh mạng (SOC) t
      sudo add-apt-repository ppa:oisf/suricata-stable -y
      sudo apt update && sudo apt install suricata jq -y && sudo suricata-update
      ```
-     Sửa `/etc/suricata/suricata.yaml`: đặt `HOME_NET: "[10.0.0.0/24,192.168.100.0/24]"`, cho `af-packet` lắng nghe `ens34`.
-  5. Cài Wazuh Agent trên Sensor, cấu hình Agent đọc luồng log `/var/log/suricata/eve.json` dạng `json` đẩy về SIEM.
+     Sửa `/etc/suricata/suricata.yaml`: đặt `HOME_NET: "[10.0.0.0/24,192.168.100.0/24]"`, cho `af-packet` lắng nghe `ens34`, và thêm `- local.rules` vào mục `rule-files:`.
+  5. Cài Wazuh Agent trên Sensor, phân quyền thư mục và cấu hình Agent đọc luồng log `eve.json` dạng `json` đẩy về SIEM:
+     ```bash
+     sudo usermod -aG suricata wazuh && sudo chmod 755 /var/log/suricata && sudo chmod 644 /var/log/suricata/eve.json
+     sudo systemctl enable wazuh-agent && sudo systemctl restart wazuh-agent
+     ```
   6. Lưu cấu hình vào repo: `configs/suricata.yaml`, `configs/netplan-sensor.yaml`, `rules/local.rules`.
 
 ---
@@ -208,16 +219,21 @@ Hệ thống thiết lập một trung tâm điều hành an ninh mạng (SOC) t
   1. Tạo Linked Clone Target-Server, gán mạng **VMnet2**, đặt IP `10.0.0.10/24`, Gateway `10.0.0.1`.
      * Kiểm tra thông mạng: `ping -c 3 8.8.8.8`.
      * Cài Nginx Web Server: `sudo apt update && sudo apt install nginx -y`.
-     * Cài đặt Wazuh Agent trỏ về Manager `192.168.100.10`.
+     * Cài đặt Wazuh Agent trỏ về Manager `192.168.100.10` và cấu hình FIM `<syscheck>` giám sát `/var/www/html`.
   2. Thiết lập máy Kali Linux: Gán mạng **VMnet8**, IP `192.168.100.50/24`.
      * **Bắt buộc thêm Static Route sang dải Target:**
        ```bash
        sudo ip route add 10.0.0.0/24 via 192.168.100.20
        ```
+     * **Chuẩn bị từ điển (Bắt buộc giải nén):**
+       ```bash
+       sudo gunzip -k /usr/share/wordlists/rockyou.txt.gz 2>/dev/null || true
+       echo -e "123456\npassword\nadmin\nubuntu\nletmein" > ~/test_pass.txt
+       ```
   3. Thực thi 3 kịch bản demo:
      * **TC-01 (Quét Nmap):** `nmap -sS -p 22,80 10.0.0.10`
-     * **TC-02 (Brute-force SSH):** `hydra -l root -P /usr/share/wordlists/rockyou.txt ssh://10.0.0.10 -t 4`
-     * **TC-03 (Web SQLi):** `curl "http://10.0.0.10/?id=1'%20OR%20'1'='1"`
+     * **TC-02 (Brute-force SSH):** `hydra -l ubuntu -P ~/test_pass.txt ssh://10.0.0.10 -t 4` *(Target tự động DROP IP)*
+     * **TC-03 (Web SQLi & FIM):** `curl "http://10.0.0.10/?id=1'%20OR%20'1'='1"` và tạo thử `shell.php` trên Target.
   4. Lưu cấu hình vào repo: `configs/netplan-target.yaml`, `scripts/attack_simulation.sh`.
 
 ---
