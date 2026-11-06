@@ -49,6 +49,28 @@ git stash pop
 ```
 *(Mẹo: Bấm `git stash` để cất tạm thay đổi trước khi checkout, tránh bị lỗi xung đột khi đổi nhánh).*
 
+### Cách 3: Kiểm tra & Sửa lỗi chéo trên Pull Request của đồng đội (Review & Fix PR)
+Khi một thành viên mở PR trên GitHub (ví dụ: `feature/suricata-sensor-nat`), bạn có thể kéo nhánh đó về máy mình để kiểm tra chạy thử hoặc hỗ trợ sửa lỗi:
+
+```bash
+# 1. Tải danh sách commit và nhánh mới nhất từ GitHub:
+git fetch origin
+
+# 2. Chuyển sang nhánh PR của bạn (lần đầu tiên lấy về máy):
+git switch --track origin/<ten-nhanh-pr>   # Ví dụ: git switch --track origin/feature/suricata-sensor-nat
+# (Nếu nhánh này đã có sẵn trên máy bạn từ trước: git switch <ten-nhanh-pr>)
+
+# 3. Xem các thay đổi so với nhánh main:
+git diff main...HEAD
+
+# 4. Sửa lỗi, chạy thử nghiệm, sau đó commit và push thẳng lên chính nhánh PR đó:
+git add .
+git commit -m "fix: sua loi cu phap ho dong doi"
+git push origin <ten-nhanh-pr>
+
+# 5. Khi CI GitHub Actions báo Xanh lá -> Tiến hành Duyệt (Approve) và bấm Merge vào main!
+```
+
 ---
 
 ## 📌 1. Mục tiêu & Phạm vi kỹ thuật
@@ -349,7 +371,7 @@ Nếu muốn Copy - Paste văn bản và Kéo - Thả file (Drag & Drop) trực 
 | Mã | Kịch bản tấn công | Lệnh thực thi từ Kali | Khung MITRE ATT&CK | Cơ chế phát hiện | Cơ chế phản ứng (Active Response) | Bằng chứng nghiệm thu |
 | :---: | :--- | :--- | :---: | :--- | :--- | :--- |
 | **TC-01** | Quét cổng do thám (Reconnaissance) | `nmap -sS -p 22,80 10.0.0.10` | **T1046** (Network Service Discovery)<br>**T1595** (Active Scanning) | **Suricata (Network):** Bắt signature Nmap User-Agent trong `eve.json` | Wazuh SIEM nhận log, sinh Alert Level 6-8, phân loại nhóm `reconnaissance` | Biểu đồ Dashboard nhảy số; IP chưa bị chặn (chưa vượt ngưỡng) |
-| **TC-02** | Dò mật khẩu SSH & Tự động chặn IP | `hydra -l root -P rockyou.txt ssh://10.0.0.10 -t 4` | **T1110.001** (Brute Force: Password Guessing) | **Target OS (Host Log):** Wazuh Agent đọc `/var/log/auth.log` failed 5 lần liên tiếp | **Rule 5712 (Level 10)** kích hoạt script `firewall-drop` trên Target | Terminal Hydra báo `timed out`; `iptables -L` có dòng DROP IP Kali; Telegram nhận tin |
+| **TC-02** | Dò mật khẩu SSH & Tự động chặn IP | `hydra -l ubuntu -P ~/test_pass.txt ssh://10.0.0.10 -t 4` | **T1110.001** (Brute Force: Password Guessing) | **Target OS (Host Log):** Wazuh Agent đọc `/var/log/auth.log` failed 5 lần liên tiếp | **Rule 5712 (Level 10)** kích hoạt script `firewall-drop` trên Target | Terminal Hydra báo `timed out`; `iptables -L` có dòng DROP IP Kali; Telegram nhận tin |
 | **TC-03** | Khai thác Web SQL Injection | `curl "http://10.0.0.10/?id=1'%20OR%20'1'='1"` | **T1190** (Exploit Public-Facing Application) | **Suricata (Network):** Bắt signature SQL Injection Attempt | Kích hoạt cảnh báo Critical (Level 12+), gắn nhãn MITRE T1190 | Suricata ghi alert; Telegram bắn tin cảnh báo màu đỏ tức thời |
 | **TC-04** | Tải WebShell & Giám sát FIM | `curl -F "file=@shell.php" http://10.0.0.10/upload` *(hoặc tạo file `/var/www/html/backdoor.php`)* | **T1505.003** (Server Component: Web Shell)<br>**T1078** (Valid Accounts) | **Wazuh FIM (Host):** Syscheck quét `/var/www/html/` phát hiện file mới/sửa đổi | Kích hoạt Rule 550 (Integrity checksum changed) Level 7+ | Dashboard hiển thị file bị thêm/sửa, diff nội dung tệp; Telegram báo động |
 
@@ -469,3 +491,18 @@ Trong quá trình thực hành trên máy ảo VMware, nếu bất kỳ thành v
    * Tạo commit sửa đổi trên nhánh làm việc cá nhân: `git commit -m "docs: sua buoc X do thuc te tren may ao Y"`.
    * Mở Pull Request vào nhánh `main`. Nhờ hệ thống **CI Fast-Pass Whitelist**, các PR chỉnh sửa tài liệu chuẩn sẽ được CI tự động thông qua chỉ sau ~10 giây (nếu không vi phạm rò rỉ secret).
    * Báo tin nhanh vào nhóm chat (Telegram/Zalo) để các thành viên khác kéo dữ liệu mới nhất về (Xem chi tiết câu lệnh tại [**Hướng dẫn đồng bộ dữ liệu nhanh ở đầu trang**](#-hướng-dẫn-đồng-bộ-dữ-liệu-nhanh-cho-cả-nhóm-daily-git-sync)).
+
+---
+
+## 🤖 14. Nguyên tắc phối hợp với Trợ lý AI (Working with AI & Governance)
+
+Dự án ứng dụng mô hình AI Agent (Google Antigravity) để hỗ trợ rà soát DevSecOps, tự động hóa kiểm định và quản trị tài liệu kỹ thuật theo thời gian thực. Toàn bộ hoạt động phối hợp tuân thủ nghiêm ngặt 4 nguyên tắc:
+
+1. **Quyền quyết định tối cao thuộc về con người (Human-in-the-Loop Gate):**
+   - AI chỉ đóng vai trò trợ lý tư vấn, phát hiện lỗ hổng logic và đề xuất văn bản. Mọi lệnh `git commit`, `git push` hoặc áp dụng cấu hình lên hạ tầng mạng đều **phải có sự phê duyệt rõ ràng từ thành viên nhóm**.
+2. **Kiểm định thực tế trước tiên (Verification First):**
+   - Tuyệt đối không đưa vào tài liệu những câu lệnh chưa được kiểm chứng thực tế trên cụm máy ảo VMware (ví dụ: phát hiện dịch vụ mạng thực tế là `network.service` thay vì `systemd-networkd`).
+3. **Chính sách Không lộ lọt dữ liệu (Zero-Leak Policy):**
+   - Tuyệt đối không commit lên GitHub các thông tin nhạy cảm: Telegram Bot Token thật, Private Key, mật khẩu người dùng, file log dung lượng lớn (`eve.json`) hoặc ổ đĩa ảo (`.vmdk`).
+4. **Cô lập cấu hình Agent cục bộ:**
+   - Các file cấu hình kỹ năng Agent (`.agent/`) và file ghi nhớ lỗi/phản biện cá nhân (`prompt.md`, `promp.md`) **bắt buộc nằm trong `.gitignore`**, chỉ lưu trữ trên máy cá nhân để giữ repo sạch đẹp chuẩn mã nguồn kỹ thuật.

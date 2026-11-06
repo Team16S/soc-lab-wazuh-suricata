@@ -388,6 +388,25 @@ Khi nhận được thông báo trong nhóm chat có cập nhật mới vừa đ
   git stash pop
   ```
 
+* **Cách 3: Kiểm tra & Sửa lỗi chéo trên Pull Request của đồng đội (Review & Fix PR):**
+  ```bash
+  # 1. Tải danh sách commit và nhánh mới nhất từ GitHub:
+  git fetch origin
+
+  # 2. Chuyển sang nhánh PR của bạn (lần đầu tiên lấy về máy):
+  git switch --track origin/<ten-nhanh-pr>   # Ví dụ: git switch --track origin/feature/suricata-sensor-nat
+
+  # 3. Xem các thay đổi so với nhánh main:
+  git diff main...HEAD
+
+  # 4. Sửa lỗi, chạy thử nghiệm, sau đó commit và push thẳng lên chính nhánh PR đó:
+  git add .
+  git commit -m "fix: sua loi cu phap ho dong doi"
+  git push origin <ten-nhanh-pr>
+
+  # 5. Khi CI GitHub Actions báo Xanh lá -> Tiến hành Duyệt (Approve) và bấm Merge vào main!
+  ```
+
 ---
 
 ## 6. CƠ CẤU NHÓM 3 NGƯỜI & PHÂN CÔNG CHI TIẾT (RACI MATRIX)
@@ -922,3 +941,18 @@ sudo truncate -s 0 /var/log/suricata/eve.json
 # Xóa chặn khẩn cấp toàn bộ iptables:
 sudo iptables -F
 ```
+
+---
+
+## 15. NGUYÊN TẮC QUẢN TRỊ & PHỐI HỢP VỚI TRỢ LÝ AI (AI GOVERNANCE & WORKING WITH AI)
+
+Dự án ứng dụng mô hình AI Agent (Google Antigravity) để hỗ trợ rà soát DevSecOps, tự động hóa kiểm định và quản trị tài liệu kỹ thuật theo thời gian thực. Toàn bộ hoạt động phối hợp tuân thủ nghiêm ngặt 4 nguyên tắc:
+
+1. **Quyền quyết định tối cao thuộc về con người (Human-in-the-Loop Gate):**
+   - AI chỉ đóng vai trò trợ lý tư vấn, phát hiện lỗ hổng logic và đề xuất văn bản. Mọi lệnh `git commit`, `git push` hoặc áp dụng cấu hình lên hạ tầng mạng đều **phải có sự phê duyệt rõ ràng từ thành viên nhóm**.
+2. **Kiểm định thực tế trước tiên (Verification First):**
+   - Tuyệt đối không đưa vào tài liệu những câu lệnh chưa được kiểm chứng thực tế trên cụm máy ảo VMware (ví dụ: phát hiện dịch vụ mạng thực tế là `network.service` thay vì `systemd-networkd`, hoặc cấu hình mạng đọc từ `ifcfg-eth0`).
+3. **Chính sách Không lộ lọt dữ liệu (Zero-Leak Policy):**
+   - Tuyệt đối không commit lên GitHub các thông tin nhạy cảm: Telegram Bot Token thật, Private Key, mật khẩu người dùng, file log dung lượng lớn (`eve.json`) hoặc ổ đĩa ảo (`.vmdk`).
+4. **Cô lập cấu hình Agent cục bộ:**
+   - Các file cấu hình kỹ năng Agent (`.agent/`) và file ghi nhớ lỗi/phản biện cá nhân (`prompt.md`, `promp.md`) **bắt buộc nằm trong `.gitignore`**, chỉ lưu trữ trên máy cá nhân để giữ repo sạch đẹp chuẩn mã nguồn kỹ thuật.

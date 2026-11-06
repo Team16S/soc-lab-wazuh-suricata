@@ -49,5 +49,7 @@ desktop.ini
 # File giao thức QA & nhắc việc Agent cục bộ (Chỉ dùng môi trường cá nhân, tuyệt đối không commit)
 prompt.md
 promp.md
+README_2.md
+README_*.md
 
 
