@@ -300,6 +300,7 @@ prompt.md
 promp.md
 README_2.md
 README_*.md
+assets/
 ```
 
 ### 5.3. Quy ước nhánh và Commit
