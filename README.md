@@ -290,8 +290,10 @@ Nếu muốn Copy - Paste văn bản và Kéo - Thả file (Drag & Drop) trực 
   4. Cấu hình White-list và Active Response trong `/var/ossec/etc/ossec.conf`:
      * Thêm thẻ `<white_list>` chứa IP Sensor (`192.168.100.20`, `10.0.0.1`), Target (`10.0.0.10`), SIEM (`192.168.100.10`).
      * Thêm `<active-response>` kích hoạt `firewall-drop` với `rules_id`: `5712`.
-  5. Viết script tích hợp Telegram `/var/ossec/integrations/custom-telegram.py`, cấp quyền `sudo chmod 750` và `sudo chown root:wazuh`.
-  6. Lưu cấu hình vào repo: `configs/ossec-manager.conf`, `rules/local_rules.xml`, `scripts/custom-telegram.py`.
+  5. Tích hợp cảnh báo khẩn (Telegram hoặc Discord Webhook):
+     * **Cách A (Telegram):** Viết `/var/ossec/integrations/custom-telegram.py`, cấp quyền `sudo chmod 750` và `sudo chown root:wazuh`.
+     * **Cách B (Discord - Miễn phí 100%, không cần số điện thoại):** Viết `/var/ossec/integrations/custom-discord.py`, cấp quyền tương tự.
+  6. Lưu cấu hình vào repo: `configs/ossec-manager.conf`, `rules/local_rules.xml`, `scripts/custom-telegram.py`, `scripts/custom-discord.py`.
 
 ---
 
@@ -420,6 +422,7 @@ soc-lab-wazuh-suricata/
 │   └── local_rules.xml             # Custom Decoders & Rules viết riêng trên Wazuh
 ├── scripts/
 │   ├── custom-telegram.py          # Script Webhook bắn cảnh báo tự động về Telegram
+│   ├── custom-discord.py           # Script Webhook bắn cảnh báo tự động về Discord (Free 100%)
 │   └── attack_simulation.sh        # Script chạy tự động Nmap/Hydra từ máy Kali
 └── docs/
     └── Ke_Hoach_Trien_Khai.md      # Bản kế hoạch kỹ thuật & Runbook chi tiết
