@@ -262,6 +262,7 @@ soc-lab-wazuh-suricata/
 │   └── local_rules.xml             # Custom Decoders & Rules viết riêng trên Wazuh
 ├── scripts/
 │   ├── custom-telegram.py          # Script Webhook bắn cảnh báo tự động về Telegram
+│   ├── custom-discord.py           # Script Webhook bắn cảnh báo tự động về Discord (Free 100%)
 │   └── attack_simulation.sh        # Script chạy tự động Nmap/Hydra từ máy Kali
 └── docs/
     ├── Ke_Hoach_Trien_Khai.md      # Bản kế hoạch kỹ thuật & Runbook chi tiết
@@ -566,17 +567,27 @@ Mở file cấu hình trung tâm: `sudo nano /var/ossec/etc/ossec.conf`. Thêm d
     <timeout>600</timeout>            <!-- Thời gian khóa: 10 phút (600 giây) -->
   </active-response>
 
-  <!-- 3. Tích hợp Webhook đẩy cảnh báo Telegram -->
+  <!-- 3A. Tích hợp Webhook đẩy cảnh báo Telegram (Tùy chọn) -->
   <integration>
     <name>custom-telegram.py</name>
     <level>10</level>                 <!-- Chỉ gửi cảnh báo từ Level 10 trở lên -->
     <hook_url>https://api.telegram.org</hook_url>
     <alert_format>json</alert_format>
   </integration>
+
+  <!-- 3B. Tích hợp Webhook đẩy cảnh báo Discord (Miễn phí 100%, không cần số điện thoại) -->
+  <integration>
+    <name>custom-discord.py</name>
+    <level>10</level>
+    <hook_url>https://discord.com/api/webhooks/</hook_url>
+    <alert_format>json</alert_format>
+  </integration>
 </ossec_config>
 ```
 
-#### Bước 6: Soạn script Webhook Telegram và cấp quyền thực thi
+#### Bước 6: Soạn script Webhook cảnh báo (Telegram hoặc Discord) và cấp quyền thực thi
+
+##### Tùy chọn 6A: Tích hợp Telegram Webhook
 Tạo file: `sudo nano /var/ossec/integrations/custom-telegram.py`
 ```python
 #!/usr/bin/env python3
@@ -606,10 +617,56 @@ message = (
 url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
 requests.post(url, json={"chat_id": CHAT_ID, "text": message, "parse_mode": "Markdown"})
 ```
-Phân quyền thực thi chuẩn xác:
+
+##### Tùy chọn 6B: Tích hợp Discord Webhook (Khuyên dùng - Miễn phí 100%, tạo Webhook 30s)
+Tạo file: `sudo nano /var/ossec/integrations/custom-discord.py`
+```python
+#!/usr/bin/env python3
+import sys
+import json
+import requests
+
+WEBHOOK_URL = "YOUR_DISCORD_WEBHOOK_URL"
+
+if len(sys.argv) < 2:
+    sys.exit(0)
+
+alert_file = sys.argv[1]
+with open(alert_file, "r", encoding="utf-8") as f:
+    alert_json = json.load(f)
+
+rule = alert_json.get("rule", {})
+rule_id = rule.get("id", "N/A")
+description = rule.get("description", "Canh bao khong co mo ta")
+level = rule.get("level", 0)
+
+data = alert_json.get("data", {})
+src_ip = data.get("src_ip", alert_json.get("srcip", "N/A"))
+agent_name = alert_json.get("agent", {}).get("name", "Wazuh-Manager")
+
+payload = {
+    "username": "Wazuh SIEM Alert",
+    "embeds": [{
+        "title": f"🚨 [LEVEL {level}] CẢNH BÁO AN NINH MẠNG",
+        "description": f"**Hành vi:** {description}",
+        "color": 0xFF0000 if level >= 10 else 0xFFA500,
+        "fields": [
+            {"name": "🔢 Rule ID", "value": f"`{rule_id}`", "inline": True},
+            {"name": "🎯 Mức độ", "value": f"**{level}/15**", "inline": True},
+            {"name": "⚠️ IP Tấn công", "value": f"`{src_ip}`", "inline": True},
+            {"name": "🖥️ Mục tiêu", "value": f"`{agent_name}`", "inline": True}
+        ]
+    }]
+}
+
+if WEBHOOK_URL != "YOUR_DISCORD_WEBHOOK_URL":
+    requests.post(WEBHOOK_URL, json=payload, timeout=5)
+```
+
+Phân quyền thực thi chuẩn xác cho cả 2 script:
 ```bash
-sudo chmod 750 /var/ossec/integrations/custom-telegram.py
-sudo chown root:wazuh /var/ossec/integrations/custom-telegram.py
+sudo chmod 750 /var/ossec/integrations/custom-telegram.py /var/ossec/integrations/custom-discord.py 2>/dev/null || true
+sudo chown root:wazuh /var/ossec/integrations/custom-telegram.py /var/ossec/integrations/custom-discord.py 2>/dev/null || true
 sudo systemctl restart wazuh-manager
 ```
 
