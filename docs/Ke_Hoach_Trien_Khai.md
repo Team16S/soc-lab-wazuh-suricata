@@ -244,6 +244,11 @@ Các máy chủ Linux Server (Wazuh, Ubuntu Server) chỉ chạy giao diện dò
 
 ## 5. QUY CHUẨN QUẢN TRỊ KHO LƯU TRỮ GITHUB NHÓM
 
+> [!TIP]
+> **🤖 LƯU Ý SỐNG CÒN KHI LÀM VIỆC CÙNG TRỢ LÝ AI (AI PAIR-PROGRAMMING):**  
+> Mọi thành viên trong nhóm khi nhờ AI hỗ trợ gõ lệnh/sửa lỗi **bắt buộc tuân thủ 5 nguyên tắc** (xem chi tiết tại [**Mục 15: Nguyên tắc quản trị & phối hợp với Trợ lý AI**](#15-nguyên-tắc-quản-trị--phối-hợp-với-trợ-lý-ai-ai-governance--working-with-ai)).  
+> * **Sau mỗi buổi làm việc:** Bắt buộc yêu cầu AI tóm tắt và lưu lại vào file [`session_summary.md`](../session_summary.md) trên máy cá nhân để tránh AI bị mất toàn bộ ngữ cảnh và sinh ảo giác lặp lại các lỗi cũ ở phiên sau!
+
 ### 5.1. Cấu trúc thư mục kho lưu trữ chuẩn
 ```text
 soc-lab-wazuh-suricata/

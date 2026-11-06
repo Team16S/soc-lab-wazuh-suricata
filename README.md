@@ -21,6 +21,11 @@
 > [!IMPORTANT]
 > **Dành cho mọi thành viên:** Bất cứ khi nào bắt đầu làm việc hoặc thấy nhóm chat thông báo có cập nhật mới vừa merge vào `main`, hãy chạy ngay các lệnh sau để đảm bảo máy của bạn luôn có bản mới nhất:
 
+> [!TIP]
+> **🤖 LƯU Ý SỐNG CÒN KHI LÀM VIỆC CÙNG TRỢ LÝ AI (AI PAIR-PROGRAMMING):**  
+> Mọi thành viên trong nhóm khi nhờ AI hỗ trợ gõ lệnh/sửa lỗi **bắt buộc tuân thủ 5 nguyên tắc** (xem chi tiết tại [**Mục 14: Nguyên tắc phối hợp với Trợ lý AI**](#-14-nguyên-tắc-phối-hợp-với-trợ-lý-ai-working-with-ai--governance)).  
+> * **Sau mỗi buổi làm việc:** Bắt buộc yêu cầu AI tóm tắt và lưu lại vào file [`session_summary.md`](session_summary.md) trên máy cá nhân để tránh AI bị mất toàn bộ ngữ cảnh và sinh ảo giác lặp lại các lỗi cũ ở phiên sau!
+
 ### Cách 1: Cập nhật nhánh `main` trên máy tính của bạn
 ```bash
 # 1. Chuyển sang nhánh main:
