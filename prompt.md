@@ -89,6 +89,16 @@ Sau khi đối chiếu nghiêm ngặt với thực tế máy ảo VMware của 3
 
 ---
 
+### ❌ Điểm sai 11: Không nhấn mạnh ngữ cảnh phân quyền (sudo vs user), gây lỗi E212 và kẹt Swap E325
+* **Lỗi & Thiếu sót của AI:** Viết lệnh cấu hình nhưng không giải thích ngữ cảnh quyền hạn root, khiến thành viên mở file hệ thống bằng tài khoản thường (`wazuh-user`, `ubuntu`) mà quên `sudo`.
+* **Hậu quả thực tế:** Người dùng gặp lỗi `E212: Can't open file for writing`, không lưu được file mạng. Khi lỡ tắt cửa sổ ngang, tiến trình bị treo ngầm sinh file swap rác `/var/tmp/*.swp` gây tiếp lỗi `E325: ATTENTION Swap file already exists`.
+* **Bản sửa đổi chuẩn xác:**
+  * Nhấn mạnh 100% lệnh sửa `/etc/`, dịch vụ `systemctl`, mạng và cài gói bắt buộc phải có `sudo` hoặc chạy dưới quyền root.
+  * Hướng dẫn mẹo nhàn nhất: Gõ `sudo -i` ngay khi đăng nhập để lên quyền root `#`, tránh quên `sudo`.
+  * Bổ sung quy trình cứu hộ: Thoát `vi` khi bị E212 (`Enter` -> `Esc` -> `:q!` -> `Enter`), và lệnh dọn sạch tiến trình ngầm + file swap: `sudo killall vi 2>/dev/null; sudo rm -f /var/tmp/*.swp 2>/dev/null`.
+
+---
+
 ## 📋 PHẦN 2: CHECKLIST BẮT BUỘC CHẠY LẠI SAU MỖI TASK/ISSUE
 
 Mỗi khi Agent hoàn thành bất kỳ Issue nào, **BẮT BUỘC** phải rà soát qua 6 cánh cổng kiểm định sau:

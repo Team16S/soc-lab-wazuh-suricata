@@ -210,6 +210,30 @@ Các máy chủ Linux Server (Wazuh, Ubuntu Server) chỉ chạy giao diện dò
 * **Wazuh (Amazon Linux 2023):** Dùng trình soạn thảo `vi`. Nhấn phím `i` để bắt đầu nhập văn bản, nhập xong nhấn `Esc` rồi gõ `:wq` và ấn `Enter` để lưu thoát.
 * **Ubuntu Server (Sensor/Target):** Dùng `nano`. Nhập xong nhấn `Ctrl + O` $\rightarrow$ `Enter` để lưu, nhấn `Ctrl + X` để thoát.
 
+#### 4. ⚠️ Nguyên tắc phân quyền thực thi (Root / sudo) & Cách xử lý lỗi E212 / E325
+> ❌ **CẢNH BÁO LỖI PHỔ BIẾN:**  
+> Nếu bạn mở file cấu hình bằng tài khoản thường mà **quên gõ `sudo`** (ví dụ `vi /etc/...` thay vì `sudo vi /etc/...`), khi lưu file bạn sẽ gặp ngay lỗi **`E212: Can't open file for writing`** (không có quyền ghi). Nếu bấm tắt cửa sổ ngang, lần sau mở file sẽ bị dính cảnh báo trùng swap **`E325: ATTENTION`**!
+
+* **Những lệnh nào BẮT BUỘC phải chạy với `sudo` (hoặc dưới quyền root)?**
+  - Mọi thao tác tạo/sửa file trong `/etc/` và `/var/` (file mạng, cấu hình Suricata, Wazuh Agent/Manager, firewall).
+  - Mọi lệnh điều khiển dịch vụ hệ thống: `sudo systemctl restart/start/status ...`.
+  - Mọi lệnh cấu hình mạng & định tuyến: `sudo iptables ...`, `sudo sysctl ...`, `sudo netplan apply`.
+  - Mọi lệnh cài đặt và gỡ bỏ phần mềm: `sudo apt ...`, `sudo dnf ...`.
+* **Cách xử lý khi lỡ bị lỗi E212 trong `vi`:**
+  - Nhấn phím **`Enter`** $\rightarrow$ Nhấn **`Esc`** $\rightarrow$ Gõ lệnh thoát cưỡng chế: **`:q!`** $\rightarrow$ Nhấn **`Enter`**. Sau đó mở lại bằng `sudo vi ...`.
+* **Cách xử lý khi bị cảnh báo trùng Swap (E325: ATTENTION):**
+  - Nhấn phím **`q`** để thoát cảnh báo $\rightarrow$ Chạy lệnh dọn sạch tiến trình ngầm và file swap:
+    ```bash
+    sudo killall vi 2>/dev/null
+    sudo rm -f /var/tmp/*.swp 2>/dev/null
+    ```
+* **💡 Tuyệt chiêu làm lab không lo quên `sudo`:**
+  - Ngay sau khi đăng nhập máy ảo hoặc kết nối SSH, hãy gõ 1 lệnh duy nhất để chuyển thẳng sang quyền root:
+    ```bash
+    sudo -i
+    ```
+    *(Dấu nhắc lệnh từ `$` sẽ đổi sang `#`, lúc này bạn là root toàn quyền, tha hồ chạy mọi lệnh trong Runbook mà không cần gõ `sudo` ở đầu mỗi dòng).*
+
 ---
 
 ## 5. QUY CHUẨN QUẢN TRỊ KHO LƯU TRỮ GITHUB NHÓM
@@ -367,7 +391,7 @@ Khi nhận được thông báo trong nhóm chat có cập nhật mới vừa đ
 
 ## 7. NHỮNG ĐIỀU CẦN LƯU Ý & SAI LẦM CHÍ MẠNG TUYỆT ĐỐI TRÁNH TÁI PHẠM
 
-Mọi thành viên phải đọc kỹ 7 sai lầm kinh điển sau để không làm hỏng bài lab:
+Mọi thành viên phải đọc kỹ 8 sai lầm kinh điển sau để không làm hỏng bài lab:
 
 1. **Sai lầm 1: Kali không thêm Static Route sang dải Target**
    * *Hiện tượng:* Kali gõ `nmap 10.0.0.10` báo `Host seems down`, không thể tấn công.
@@ -395,6 +419,13 @@ Mọi thành viên phải đọc kỹ 7 sai lầm kinh điển sau để không 
      * **KHÔNG bấm "Install VMware Tools" trên VMware.**
      * Gõ cấu hình IP ban đầu (chỉ mất 30s), sau đó **mở PowerShell trên máy thật (Windows) và SSH trực tiếp vào IP máy ảo** (`ssh user@IP`). Từ terminal máy thật, copy-paste bằng `Ctrl + V` hoặc Chuột phải mượt mà 100%.
      * Đối với máy Kali Linux (có desktop): Chạy lệnh `sudo apt install -y open-vm-tools-desktop && sudo reboot` và bật tính năng `Guest Isolation` trong VM Settings.
+8. **Sai lầm 8: Thực thi cấu hình hệ thống bằng tài khoản thường mà quên gõ `sudo` (Lỗi E212 & E325 Swap Lock)**
+   * *Hiện tượng:* Khi lưu file bằng `vi` bị báo lỗi `E212: Can't open file for writing`; đóng ngang màn hình thì lần sau mở lại bị báo `E325: ATTENTION Swap file already exists`.
+   * *Nguyên nhân:* Các thư mục `/etc/...` và `/var/...` thuộc quyền sở hữu của root, tài khoản thường (`ubuntu`, `wazuh-user`) không có quyền ghi nếu không có `sudo`.
+   * *Cách khắc phục:*
+     * Luôn chạy lệnh với `sudo` (hoặc gõ `sudo -i` để lên quyền root ngay từ đầu).
+     * Thoát `vi` khi bị lỗi E212: Nhấn `Enter` $\rightarrow$ `Esc` $\rightarrow$ `:q!` $\rightarrow$ `Enter`.
+     * Xóa sạch file swap rác: `sudo killall vi 2>/dev/null; sudo rm -f /var/tmp/*.swp 2>/dev/null`.
 
 ---
 

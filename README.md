@@ -190,6 +190,26 @@ Nếu muốn Copy - Paste văn bản và Kéo - Thả file (Drag & Drop) trực 
 - **Wazuh (Amazon Linux 2023):** Dùng trình soạn thảo `vi`. Nhấn `i` để gõ, gõ xong nhấn `Esc` rồi gõ `:wq` và ấn `Enter`.
 - **Ubuntu (Sensor/Target):** Dùng `nano`. Gõ xong nhấn `Ctrl + O` $\rightarrow$ `Enter` để lưu, `Ctrl + X` để thoát.
 
+### 4. ⚠️ NGUYÊN TẮC PHÂN QUYỀN (ROOT / SUDO) — TUYỆT ĐỐI KHÔNG BỎ QUA
+> ❌ **CẢNH BÁO LỖI PHỔ BIẾN:**  
+> Nếu bạn gõ lệnh sửa file cấu hình mà **quên gõ `sudo`** (ví dụ gõ `vi /etc/...` thay vì `sudo vi /etc/...`), bạn sẽ bị lỗi **`E212: Can't open file for writing`** (không lưu được file). Nếu lỡ đóng cửa sổ ngang, lần sau mở lại sẽ bị lỗi kẹt swap **`E325: ATTENTION`**!
+
+* **Lệnh nào BẮT BUỘC dùng `sudo` (Quyền Root)?**
+  - Mọi thao tác sửa file trong `/etc/` và `/var/` (ví dụ: `/etc/systemd/network/...`, `/etc/netplan/...`, `/etc/suricata/...`, `/var/ossec/...`).
+  - Mọi lệnh khởi động / dừng dịch vụ: `systemctl restart/status ...`.
+  - Mọi lệnh cấu hình mạng & tường lửa: `iptables`, `firewall-cmd`, `sysctl`, `netplan apply`.
+  - Mọi lệnh cài đặt phần mềm: `apt`, `dnf`.
+* **Cách thoát khi lỡ gõ thiếu `sudo` trong `vi` (bị lỗi E212):**
+  - Nhấn `Enter` $\rightarrow$ Nhấn `Esc` $\rightarrow$ Gõ `:q!` $\rightarrow$ Nhấn `Enter` để thoát ra không lưu.
+* **Cách xóa lỗi kẹt file Swap (E325: ATTENTION):**
+  - Nhấn `q` để thoát thông báo $\rightarrow$ Chạy lệnh dọn sạch: `sudo killall vi 2>/dev/null; sudo rm -f /var/tmp/*.swp 2>/dev/null`.
+* **💡 Mẹo nhàn nhất cho cả nhóm:**
+  - Để không phải gõ `sudo` trước mỗi lệnh, ngay sau khi đăng nhập máy ảo hoặc SSH, bạn gõ một lần duy nhất:
+    ```bash
+    sudo -i
+    ```
+    *(Dấu nhắc lệnh chuyển từ `$` sang `#` tức là bạn đã lên quyền `root`, thoải mái gõ toàn bộ lệnh trong Runbook mà không bao giờ bị lỗi quyền).*
+
 ---
 
 ## 👥 6. Phân công trách nhiệm 3 người & Hướng dẫn kỹ thuật chi tiết
