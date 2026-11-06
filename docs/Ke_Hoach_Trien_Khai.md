@@ -315,13 +315,21 @@ assets/
 Do các máy ảo chạy hệ điều hành **Ubuntu Server không có giao diện đồ họa (GUI)**, thành viên không thể kéo thả chuột (Drag & Drop). Vì mỗi thành viên làm việc trên máy tính cá nhân quản lý máy ảo riêng, hãy sử dụng bộ lệnh `scp` tương ứng với vai trò của mình từ PowerShell máy thật:
 
 #### 🟢 Dành cho THÀNH VIÊN 1 (Trên máy tính chạy Wazuh-SIEM):
-Mở PowerShell tại thư mục dự án trên máy thật:
-```powershell
-# Lấy cấu hình Wazuh Server, Custom Rules và Script Telegram từ SIEM (192.168.100.10):
-scp wazuh-user@192.168.100.10:/var/ossec/etc/ossec.conf ./configs/ossec-manager.conf
-scp wazuh-user@192.168.100.10:/var/ossec/etc/rules/local_rules.xml ./rules/
-scp wazuh-user@192.168.100.10:/var/ossec/integrations/custom-telegram.py ./scripts/
-```
+> [!IMPORTANT]
+> **Lưu ý phân quyền Linux (Zero-Error):** Thư mục `/var/ossec/etc/` thuộc sở hữu `root:wazuh` (quyền `750`). User `wazuh-user` không được đọc trực tiếp qua SCP nếu không qua thư mục cá nhân.
+> 1. Trên máy ảo Wazuh, copy file ra thư mục `home` và phân quyền cho `wazuh-user`:
+>    ```bash
+>    sudo cp /var/ossec/etc/ossec.conf /var/ossec/etc/rules/local_rules.xml /home/wazuh-user/
+>    sudo cp /var/ossec/integrations/custom-*.py /home/wazuh-user/ 2>/dev/null || true
+>    sudo chown wazuh-user:wazuh-user /home/wazuh-user/*
+>    ```
+> 2. Mở PowerShell hoặc Git Bash tại thư mục dự án trên máy thật (`d:\AnNinhMang\soc-lab-wazuh-suricata`) để tải về:
+>    ```bash
+>    scp wazuh-user@192.168.100.10:~/ossec.conf ./configs/ossec-manager.conf
+>    scp wazuh-user@192.168.100.10:~/local_rules.xml ./rules/local_rules.xml
+>    scp wazuh-user@192.168.100.10:~/custom-discord.py ./scripts/ 2>/dev/null || true
+>    scp wazuh-user@192.168.100.10:~/custom-telegram.py ./scripts/ 2>/dev/null || true
+>    ```
 
 #### 🟡 Dành cho THÀNH VIÊN 2 (Trên máy tính chạy Suricata-Sensor):
 Mở PowerShell tại thư mục dự án trên máy thật:
@@ -527,9 +535,13 @@ Tạo Template & Clones        Suricata & Nginx             Active Response, Bot
      ```
 
 #### Bước 2: Hạ tải Java Heap Size OpenSearch (Bắt buộc tránh đơ máy thật)
+Dán khối lệnh an toàn (tự động dọn rác và cấu hình chuẩn 1GB, tránh nuốt ký tự):
 ```bash
-sudo sed -i 's/-Xms2g/-Xms1g/g' /etc/wazuh-indexer/jvm.options
-sudo sed -i 's/-Xmx2g/-Xmx1g/g' /etc/wazuh-indexer/jvm.options
+sudo sed -i '/-Xm/d' /etc/wazuh-indexer/jvm.options
+sudo sed -i '/-ons/d' /etc/wazuh-indexer/jvm.options
+echo "-Xms1g" | sudo tee -a /etc/wazuh-indexer/jvm.options
+echo "-Xmx1g" | sudo tee -a /etc/wazuh-indexer/jvm.options
+sudo systemctl daemon-reload
 sudo systemctl restart wazuh-indexer
 ```
 
@@ -540,6 +552,11 @@ sudo systemctl restart wazuh-indexer
 cat /home/wazuh-user/wazuh-passwords.txt 2>/dev/null || sudo tar -O -xvf /home/wazuh-user/wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt 2>/dev/null
 ```
 *Truy cập trình duyệt máy thật:* `https://192.168.100.10` với user `admin` và mật khẩu tương ứng.
+
+> [!TIP]
+> **Xử lý sự cố truy cập Web Dashboard thực tế:**
+> 1. **Lỗi `ERR_CONNECTION_REFUSED`:** Trình duyệt tự động dùng `http://` (port 80). Bắt buộc phải gõ rõ ràng tiền tố **`https://192.168.100.10`** (port 443).
+> 2. **Thông báo `"Wazuh dashboard server is not ready yet"`:** Đây là hiện tượng bình thường khi máy ảo vừa khởi động lại. Database `wazuh-indexer` mất từ 60 - 90 giây để nạp xong chỉ mục. Chỉ cần chờ 1 phút rồi nhấn **F5 (Reload)** trang web. Nếu cần kiểm tra: `sudo systemctl status wazuh-indexer`.
 
 #### Bước 4: Kiểm tra tường lửa đón kết nối Agent
 *Bản OVA chạy Amazon Linux 2023 (quản lý qua `firewalld` thay vì `ufw`):*
@@ -670,6 +687,32 @@ sudo chmod 750 /var/ossec/integrations/custom-telegram.py /var/ossec/integration
 sudo chown root:wazuh /var/ossec/integrations/custom-telegram.py /var/ossec/integrations/custom-discord.py 2>/dev/null || true
 sudo systemctl restart wazuh-manager
 ```
+
+#### Bước 7: Cấu hình Custom Rule phát hiện Brute-Force (`/var/ossec/etc/rules/local_rules.xml`)
+Chèn Rule ID `100002` (Level 10) để bắt đòn tấn công brute-force SSH và kích hoạt Active Response:
+```bash
+sudo tee -a /var/ossec/etc/rules/local_rules.xml > /dev/null << 'EOF'
+
+<!-- Custom Lab Rules -->
+<group name="local,syslog,">
+  <rule id="100002" level="10">
+    <if_sid>5710, 5711, 5712</if_sid>
+    <description>SOC Lab: Phat hien Brute-Force SSH tan cong lien tuc vao Target</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+  </rule>
+</group>
+EOF
+sudo systemctl restart wazuh-manager
+```
+
+#### Bước 8: Tắt máy ảo an toàn và Chụp Offline Snapshot trên VMware
+Sau khi hoàn tất toàn bộ cấu hình, tắt máy ảo từ SSH để bảo vệ cơ sở dữ liệu:
+```bash
+sudo poweroff
+```
+*(Đợi máy ảo tắt hẳn trên VMware, vào menu **VM $\rightarrow$ Snapshot $\rightarrow$ Take Snapshot...**, đặt tên `01-Wazuh-Init-Clean-Ready` để đóng băng mốc hoàn thành).*
 
 ---
 

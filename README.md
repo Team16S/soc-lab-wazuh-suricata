@@ -275,14 +275,19 @@ Nếu muốn Copy - Paste văn bản và Kéo - Thả file (Drag & Drop) trực 
        ```powershell
        ssh wazuh-user@192.168.100.10
        ```
-       Dán lệnh hạ tải Heap RAM OpenSearch (tránh đơ máy thật):
+       Dán lệnh an toàn hạ tải Heap RAM OpenSearch (dọn rác và gán chuẩn 1GB, tránh nuốt ký tự):
        ```bash
-       sudo sed -i 's/-Xms2g/-Xms1g/g' /etc/wazuh-indexer/jvm.options
-       sudo sed -i 's/-Xmx2g/-Xmx1g/g' /etc/wazuh-indexer/jvm.options
+       sudo sed -i '/-Xm/d' /etc/wazuh-indexer/jvm.options
+       sudo sed -i '/-ons/d' /etc/wazuh-indexer/jvm.options
+       echo "-Xms1g" | sudo tee -a /etc/wazuh-indexer/jvm.options
+       echo "-Xmx1g" | sudo tee -a /etc/wazuh-indexer/jvm.options
+       sudo systemctl daemon-reload
        sudo systemctl restart wazuh-indexer
        ```
   3. Đăng nhập Web Dashboard:
-     * Mặc định tài khoản Web bản OVA là: `admin` / `admin`.
+     * Mở trình duyệt máy thật gõ đủ tiền tố: `https://192.168.100.10` (Bắt buộc `https://` để tránh lỗi `ERR_CONNECTION_REFUSED`).
+     * *(Nếu thấy thông báo "Wazuh dashboard server is not ready yet", đây là trạng thái bình thường khi máy vừa bật, đợi 1 phút cho Indexer nạp xong rồi nhấn F5).*
+     * Bấm **Advanced $\rightarrow$ Proceed to 192.168.100.10 (unsafe)**. Tài khoản mặc định: `admin` / `admin`.
      * Nếu có file mật khẩu ngẫu nhiên, đọc bằng lệnh:
        ```bash
        cat /home/wazuh-user/wazuh-passwords.txt 2>/dev/null || sudo tar -O -xvf /home/wazuh-user/wazuh-install-files.tar wazuh-install-files/wazuh-passwords.txt 2>/dev/null
@@ -293,7 +298,8 @@ Nếu muốn Copy - Paste văn bản và Kéo - Thả file (Drag & Drop) trực 
   5. Tích hợp cảnh báo khẩn (Telegram hoặc Discord Webhook):
      * **Cách A (Telegram):** Viết `/var/ossec/integrations/custom-telegram.py`, cấp quyền `sudo chmod 750` và `sudo chown root:wazuh`.
      * **Cách B (Discord - Miễn phí 100%, không cần số điện thoại):** Viết `/var/ossec/integrations/custom-discord.py`, cấp quyền tương tự.
-  6. Lưu cấu hình vào repo: `configs/ossec-manager.conf`, `rules/local_rules.xml`, `scripts/custom-telegram.py`, `scripts/custom-discord.py`.
+  6. Bổ sung Custom Rule (`/var/ossec/etc/rules/local_rules.xml`) và lưu cấu hình vào repo: `configs/ossec-manager.conf`, `rules/local_rules.xml`, `scripts/custom-telegram.py`, `scripts/custom-discord.py`.
+  7. Tắt máy an toàn (`sudo poweroff`) và chụp Offline Snapshot trên VMware: đặt tên `01-Wazuh-Init-Clean-Ready`.
 
 ---
 
@@ -435,10 +441,13 @@ soc-lab-wazuh-suricata/
 Mỗi thành viên mở PowerShell tại thư mục dự án trên máy thật của mình (`d:\AnNinhMang\soc-lab-wazuh-suricata`) và chạy bộ lệnh tương ứng với vai trò của mình:
 
 * 🟢 **Thành viên 1 (Máy tính chạy Wazuh-SIEM - 192.168.100.10):**
+  > [!NOTE]
+  > Trên máy ảo Wazuh, chạy lệnh copy ra home trước: `sudo cp /var/ossec/etc/ossec.conf /var/ossec/etc/rules/local_rules.xml /home/wazuh-user/ && sudo cp /var/ossec/integrations/custom-*.py /home/wazuh-user/ 2>/dev/null; sudo chown wazuh-user:wazuh-user /home/wazuh-user/*` để tránh lỗi quyền root 750 khi SCP.
   ```powershell
-  scp wazuh-user@192.168.100.10:/var/ossec/etc/ossec.conf ./configs/ossec-manager.conf
-  scp wazuh-user@192.168.100.10:/var/ossec/etc/rules/local_rules.xml ./rules/
-  scp wazuh-user@192.168.100.10:/var/ossec/integrations/custom-telegram.py ./scripts/
+  scp wazuh-user@192.168.100.10:~/ossec.conf ./configs/ossec-manager.conf
+  scp wazuh-user@192.168.100.10:~/local_rules.xml ./rules/local_rules.xml
+  scp wazuh-user@192.168.100.10:~/custom-discord.py ./scripts/ 2>$null
+  scp wazuh-user@192.168.100.10:~/custom-telegram.py ./scripts/ 2>$null
   ```
 
 * 🟡 **Thành viên 2 (Máy tính chạy Suricata-Sensor - 192.168.100.20):**
