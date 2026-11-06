@@ -52,4 +52,7 @@ promp.md
 README_2.md
 README_*.md
 
+# Thư mục hình ảnh & tài nguyên thiết kế cục bộ (Không commit lên Git)
+assets/
+
 
