@@ -212,7 +212,13 @@ Các máy chủ Linux Server (Wazuh, Ubuntu Server) chỉ chạy giao diện dò
 
 #### 4. ⚠️ Nguyên tắc phân quyền thực thi (Root / sudo) & Cách xử lý lỗi E212 / E325
 > ❌ **CẢNH BÁO LỖI PHỔ BIẾN:**  
-> Nếu bạn mở file cấu hình bằng tài khoản thường mà **quên gõ `sudo`** (ví dụ `vi /etc/...` thay vì `sudo vi /etc/...`), khi lưu file bạn sẽ gặp ngay lỗi **`E212: Can't open file for writing`** (không có quyền ghi). Nếu bấm tắt cửa sổ ngang, lần sau mở file sẽ bị dính cảnh báo trùng swap **`E325: ATTENTION`**!
+> Nếu bạn mở file cấu hình mà **quên gõ `sudo`** hoặc **thư mục cha chưa được tạo**, khi lưu file bạn sẽ gặp ngay lỗi **`E212: Can't open file for writing`** (không lưu được file). Nếu bấm tắt cửa sổ ngang, lần sau mở file sẽ bị dính cảnh báo trùng swap **`E325: ATTENTION`**!
+
+* **2 nguyên nhân cốt tử gây lỗi `E212: Can't open file for writing`:**
+  1. *Quên quyền `sudo`:* File thuộc sở hữu của `root`, user thường không có quyền ghi.
+  2. *Thư mục cha chưa tồn tại:* `vi` không thể tự tạo folder cha. Trên Amazon Linux 2023, thư mục `/etc/systemd/network` mặc định **chưa tồn tại**, bắt buộc phải chạy `sudo mkdir -p /etc/systemd/network` trước khi tạo file!
+* **Cứu nguy trực tiếp trong `vi` khi đã lỡ nhập xong nội dung mà bị lỗi E212:**
+  - Nhấn `Esc` $\rightarrow$ Gõ lệnh: `:!mkdir -p /etc/systemd/network` $\rightarrow$ Nhấn `Enter` (để tạo thư mục ngay lập tức) $\rightarrow$ Nhấn `Enter` để quay lại $\rightarrow$ Gõ `:wq` $\rightarrow$ Nhấn `Enter` để lưu thoát 100%!
 
 * **Những lệnh nào BẮT BUỘC phải chạy với `sudo` (hoặc dưới quyền root)?**
   - Mọi thao tác tạo/sửa file trong `/etc/` và `/var/` (file mạng, cấu hình Suricata, Wazuh Agent/Manager, firewall).
@@ -419,10 +425,12 @@ Mọi thành viên phải đọc kỹ 8 sai lầm kinh điển sau để không 
      * **KHÔNG bấm "Install VMware Tools" trên VMware.**
      * Gõ cấu hình IP ban đầu (chỉ mất 30s), sau đó **mở PowerShell trên máy thật (Windows) và SSH trực tiếp vào IP máy ảo** (`ssh user@IP`). Từ terminal máy thật, copy-paste bằng `Ctrl + V` hoặc Chuột phải mượt mà 100%.
      * Đối với máy Kali Linux (có desktop): Chạy lệnh `sudo apt install -y open-vm-tools-desktop && sudo reboot` và bật tính năng `Guest Isolation` trong VM Settings.
-8. **Sai lầm 8: Thực thi cấu hình hệ thống bằng tài khoản thường mà quên gõ `sudo` (Lỗi E212 & E325 Swap Lock)**
+8. **Sai lầm 8: Quên gõ `sudo` hoặc chưa tạo thư mục cha (Lỗi vi E212 & E325 Swap Lock)**
    * *Hiện tượng:* Khi lưu file bằng `vi` bị báo lỗi `E212: Can't open file for writing`; đóng ngang màn hình thì lần sau mở lại bị báo `E325: ATTENTION Swap file already exists`.
-   * *Nguyên nhân:* Các thư mục `/etc/...` và `/var/...` thuộc quyền sở hữu của root, tài khoản thường (`ubuntu`, `wazuh-user`) không có quyền ghi nếu không có `sudo`.
+   * *Nguyên nhân:* Do tài khoản thường thiếu quyền `sudo` HOẶC do thư mục cha (như `/etc/systemd/network/` trên Amazon Linux 2023) chưa hề tồn tại khiến `vi` không thể tạo file.
    * *Cách khắc phục:*
+     * Luôn tạo thư mục cha trước: `sudo mkdir -p /etc/systemd/network`.
+     * Cứu nguy khi đang ở trong `vi`: Nhấn `Esc` $\rightarrow$ gõ `:!mkdir -p /etc/systemd/network` $\rightarrow$ `Enter` $\rightarrow$ `Enter` $\rightarrow$ `:wq`.
      * Luôn chạy lệnh với `sudo` (hoặc gõ `sudo -i` để lên quyền root ngay từ đầu).
      * Thoát `vi` khi bị lỗi E212: Nhấn `Enter` $\rightarrow$ `Esc` $\rightarrow$ `:q!` $\rightarrow$ `Enter`.
      * Xóa sạch file swap rác: `sudo killall vi 2>/dev/null; sudo rm -f /var/tmp/*.swp 2>/dev/null`.
@@ -458,9 +466,11 @@ Tạo Template & Clones        Suricata & Nginx             Active Response, Bot
 2. Đăng nhập terminal: user `wazuh-user` / password `wazuh`.
 3. Gán IP tĩnh và gateway bằng `systemd-networkd` *(Wazuh OVA chạy Amazon Linux 2023, không dùng `nmcli`)*:
    * Chạy `ip link` kiểm tra tên card mạng (thường là `eth0` hoặc `ens33`). Giả sử tên card là `eth0`.
-   * **Bước 3.1: Dọn sạch file rác (nếu lỡ gõ dở dang trước đó):**
+   * **Bước 3.1: Tạo thư mục mạng & dọn sạch file rác (Bắt buộc tránh lỗi vi E212):**
+     *(Mặc định Amazon Linux 2023 chưa có thư mục /etc/systemd/network/, nếu không tạo thì vi sẽ báo lỗi E212 không lưu được file kể cả dùng quyền root)*
      ```bash
-     sudo rm -f /etc/systemd/network/10-static-eth0.network
+     sudo mkdir -p /etc/systemd/network
+     sudo rm -f /etc/systemd/network/10-static-eth0.network /var/tmp/*.swp 2>/dev/null
      ```
    * **Bước 3.2: Dùng trình soạn thảo `vi` (100% có sẵn trên Amazon Linux 2023):**
      ```bash

@@ -192,14 +192,19 @@ Nếu muốn Copy - Paste văn bản và Kéo - Thả file (Drag & Drop) trực 
 
 ### 4. ⚠️ NGUYÊN TẮC PHÂN QUYỀN (ROOT / SUDO) — TUYỆT ĐỐI KHÔNG BỎ QUA
 > ❌ **CẢNH BÁO LỖI PHỔ BIẾN:**  
-> Nếu bạn gõ lệnh sửa file cấu hình mà **quên gõ `sudo`** (ví dụ gõ `vi /etc/...` thay vì `sudo vi /etc/...`), bạn sẽ bị lỗi **`E212: Can't open file for writing`** (không lưu được file). Nếu lỡ đóng cửa sổ ngang, lần sau mở lại sẽ bị lỗi kẹt swap **`E325: ATTENTION`**!
+> Nếu bạn gõ lệnh sửa file cấu hình mà **quên gõ `sudo`** hoặc **thư mục cha chưa tồn tại**, bạn sẽ bị lỗi **`E212: Can't open file for writing`** (không lưu được file). Nếu lỡ đóng cửa sổ ngang, lần sau mở lại sẽ bị lỗi kẹt swap **`E325: ATTENTION`**!
 
+* **2 nguyên nhân cốt tử gây lỗi `E212: Can't open file for writing`:**
+  1. *Quên quyền `sudo`:* File thuộc sở hữu của `root`, user thường không ghi được.
+  2. *Thư mục cha chưa tồn tại:* `vi` không tự tạo folder. Ví dụ trên Amazon Linux 2023, thư mục `/etc/systemd/network` mặc định **chưa có sẵn**, bắt buộc phải tạo trước bằng `sudo mkdir -p /etc/systemd/network`!
+* **Cứu nguy ngay trong `vi` khi đã lỡ nhập xong mà bị lỗi E212:**
+  - Nhấn `Esc` $\rightarrow$ Gõ `:!mkdir -p /etc/systemd/network` $\rightarrow$ `Enter` $\rightarrow$ Bấm `Enter` quay lại $\rightarrow$ Gõ `:wq` $\rightarrow$ `Enter` để lưu thành công 100%!
 * **Lệnh nào BẮT BUỘC dùng `sudo` (Quyền Root)?**
   - Mọi thao tác sửa file trong `/etc/` và `/var/` (ví dụ: `/etc/systemd/network/...`, `/etc/netplan/...`, `/etc/suricata/...`, `/var/ossec/...`).
   - Mọi lệnh khởi động / dừng dịch vụ: `systemctl restart/status ...`.
   - Mọi lệnh cấu hình mạng & tường lửa: `iptables`, `firewall-cmd`, `sysctl`, `netplan apply`.
   - Mọi lệnh cài đặt phần mềm: `apt`, `dnf`.
-* **Cách thoát khi lỡ gõ thiếu `sudo` trong `vi` (bị lỗi E212):**
+* **Cách thoát khi lỡ gõ thiếu `sudo` trong `vi`:**
   - Nhấn `Enter` $\rightarrow$ Nhấn `Esc` $\rightarrow$ Gõ `:q!` $\rightarrow$ Nhấn `Enter` để thoát ra không lưu.
 * **Cách xóa lỗi kẹt file Swap (E325: ATTENTION):**
   - Nhấn `q` để thoát thông báo $\rightarrow$ Chạy lệnh dọn sạch: `sudo killall vi 2>/dev/null; sudo rm -f /var/tmp/*.swp 2>/dev/null`.
@@ -219,9 +224,10 @@ Nếu muốn Copy - Paste văn bản và Kéo - Thả file (Drag & Drop) trực 
 * **Nhiệm vụ chi tiết:**
   1. Import file `.ova`, đặt RAM 4GB, 2 Cores, mạng **VMnet8**.
   2. Gán IP tĩnh bằng `systemd-networkd` (Amazon Linux 2023 không dùng `nmcli`) & hạ Heap RAM OpenSearch:
-     * **Bước 2.1: Xóa file rác (nếu lỡ gõ dở dang trước đó):**
+     * **Bước 2.1: Tạo thư mục mạng & dọn file rác (Bắt buộc tránh lỗi vi E212):**
        ```bash
-       sudo rm -f /etc/systemd/network/10-static-eth0.network
+       sudo mkdir -p /etc/systemd/network
+       sudo rm -f /etc/systemd/network/10-static-eth0.network /var/tmp/*.swp 2>/dev/null
        ```
      * **Bước 2.2: Dùng trình soạn thảo `vi` (100% có sẵn trên máy ảo):**
        ```bash

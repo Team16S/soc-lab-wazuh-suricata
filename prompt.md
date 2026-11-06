@@ -99,6 +99,16 @@ Sau khi đối chiếu nghiêm ngặt với thực tế máy ảo VMware của 3
 
 ---
 
+### ❌ Điểm sai 12: Thư mục `/etc/systemd/network` KHÔNG tồn tại mặc định trên Amazon Linux 2023
+* **Lỗi & Thiếu sót của AI:** Hướng dẫn chạy `sudo vi /etc/systemd/network/10-static-eth0.network` mà bỏ qua bước kiểm tra/tạo thư mục cha.
+* **Sự thật kỹ thuật:** Trên Amazon Linux 2023 (Wazuh 4.8 OVA), các file cấu hình mạng mặc định được tự động sinh tại `/run/systemd/network/`. Thư mục `/etc/systemd/network/` **hoàn toàn chưa tồn tại**! Trình soạn thảo `vi` trong Linux không thể tự động tạo thư mục cha chưa có.
+* **Hậu quả thực tế:** Người dùng dù đã dùng `sudo` hoặc đang ở quyền `root` 100%, khi gõ `:wq` vẫn bị `vi` chặn lại với lỗi `E212: Can't open file for writing`. Người dùng bối rối tưởng mình thiếu quyền, thoát ra vào lại gây kẹt swap `E325`.
+* **Bản sửa đổi chuẩn xác:**
+  * BẮT BUỘC thêm lệnh `sudo mkdir -p /etc/systemd/network` trước khi mở `vi`.
+  * Hướng dẫn cứu nguy trực tiếp trong `vi` khi đã lỡ nhập xong: Nhấn `Esc` $\rightarrow$ gõ `:!mkdir -p /etc/systemd/network` $\rightarrow$ `Enter` $\rightarrow$ gõ `:wq` để lưu thoát.
+
+---
+
 ## 📋 PHẦN 2: CHECKLIST BẮT BUỘC CHẠY LẠI SAU MỖI TASK/ISSUE
 
 Mỗi khi Agent hoàn thành bất kỳ Issue nào, **BẮT BUỘC** phải rà soát qua 6 cánh cổng kiểm định sau:
@@ -108,6 +118,7 @@ Mỗi khi Agent hoàn thành bất kỳ Issue nào, **BẮT BUỘC** phải rà 
 [ ] Không đoán mò: Công cụ đề xuất (vi, nano, nmcli, ufw) có THỰC SỰ cài sẵn trên HĐH mục tiêu không?
 [ ] Có tính đến tình huống chưa có Internet thì không thể tải thêm package (như dnf install nano) chưa?
 [ ] Đã dọn dẹp các tệp tin cấu hình rác/dở dang trước khi áp dụng cấu hình mới chưa?
+[ ] Đã tạo thư mục cha (mkdir -p /etc/systemd/network) trước khi mở vi tránh lỗi E212 chưa?
 [ ] Đã cài iptables-persistent trước khi chạy netfilter-persistent save trên Ubuntu chưa?
 [ ] Đã phân quyền usermod -aG suricata wazuh cho Agent đọc eve.json chưa?
 [ ] Đã giải nén rockyou.txt.gz trên Kali trước khi chạy Hydra chưa?
