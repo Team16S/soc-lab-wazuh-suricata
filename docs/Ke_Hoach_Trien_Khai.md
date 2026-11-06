@@ -301,6 +301,7 @@ promp.md
 README_2.md
 README_*.md
 assets/
+session_summary.md
 ```
 
 ### 5.3. Quy ước nhánh và Commit
@@ -1062,3 +1063,6 @@ Dự án ứng dụng mô hình AI Agent (Google Antigravity) để hỗ trợ r
    - Tuyệt đối không commit lên GitHub các thông tin nhạy cảm: Telegram Bot Token thật, Private Key, mật khẩu người dùng, file log dung lượng lớn (`eve.json`) hoặc ổ đĩa ảo (`.vmdk`).
 4. **Cô lập cấu hình Agent cục bộ:**
    - Các file cấu hình kỹ năng Agent (`.agent/`) và file ghi nhớ lỗi/phản biện cá nhân (`prompt.md`, `promp.md`) **bắt buộc nằm trong `.gitignore`**, chỉ lưu trữ trên máy cá nhân để giữ repo sạch đẹp chuẩn mã nguồn kỹ thuật.
+5. **Quy chuẩn Lưu trữ & Đóng băng phiên làm việc (Session Persistence & Anti-Hallucination):**
+   - Sau mỗi phiên làm việc hoàn thành hoặc giải quyết xong một lỗi/task, **thành viên bắt buộc yêu cầu AI tóm tắt và lưu lại phiên làm việc (Session Milestone)** vào file cục bộ (ví dụ: `session_summary.md`, đã được đưa vào `.gitignore`).
+   - *Mục đích phòng ngừa:* Nếu xảy ra sự cố khởi động lại máy/server, ngắt kết nối hoặc phiên chat mới bị reset ngữ cảnh (context loss), file tổng kết này sẽ đóng vai trò "mỏ neo dữ liệu thực tế" giúp AI đọc lại ngay lập tức, không bị mất toàn bộ lịch sử và tuyệt đối tránh ảo giác (hallucination) lặp lại các câu lệnh hay lỗi đã xử lý trên cụm máy ảo.
