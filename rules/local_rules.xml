@@ -1,0 +1,10 @@
+<!-- Custom Lab Rules -->
+<group name="local,syslog,">
+  <rule id="100002" level="10">
+    <if_sid>5710, 5711, 5712</if_sid>
+    <description>SOC Lab: Phat hien Brute-Force SSH tan cong lien tuc vao Target</description>
+    <mitre>
+      <id>T1110.001</id>
+    </mitre>
+  </rule>
+</group>
