@@ -46,4 +46,8 @@ desktop.ini
 # Thư mục cấu hình AI Agent cục bộ (Antigravity Skills)
 .agent/
 
+# File giao thức QA & nhắc việc Agent cục bộ (Chỉ dùng môi trường cá nhân, tuyệt đối không commit)
+prompt.md
+promp.md
+
 

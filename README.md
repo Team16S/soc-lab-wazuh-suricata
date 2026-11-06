@@ -96,7 +96,7 @@ Hệ thống thiết lập một trung tâm điều hành an ninh mạng (SOC) t
 
 | Thành phần | Con số phiên bản CHÍNH XÁC | Tên tệp tin & Link tải trực tiếp | Môi trường hệ điều hành | Phiên bản TUYỆT ĐỐI TRÁNH |
 | :--- | :---: | :--- | :--- | :--- |
-| **Wazuh-SIEM** | **`4.7.x`** hoặc **`4.8.x`** | • Bản 4.7: [`wazuh-4.7.5.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.7.5.ova) — [Doc Wazuh 4.7](https://documentation.wazuh.com/4.7/deployment-options/virtual-machine/virtual-machine.html)<br>• Bản 4.8: [`wazuh-4.8.0.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.8.0.ova) — [Doc Wazuh 4.8](https://documentation.wazuh.com/4.8/deployment-options/virtual-machine/virtual-machine.html) | **Amazon Linux 2023** (Lệnh: `systemd-networkd`, `systemctl`)<br>*(❌ Không có `nmcli`)* | ❌ Tránh `4.14 (current)` |
+| **Wazuh-SIEM** | **`4.7.x`** hoặc **`4.8.x`** | • Bản 4.7: [`wazuh-4.7.5.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.7.5.ova) — [Doc Wazuh 4.7](https://documentation.wazuh.com/4.7/deployment-options/virtual-machine/virtual-machine.html)<br>• Bản 4.8: [`wazuh-4.8.0.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.8.0.ova) — [Doc Wazuh 4.8](https://documentation.wazuh.com/4.8/deployment-options/virtual-machine/virtual-machine.html) | **Amazon Linux** (Dịch vụ mạng: `network`, `vi`)<br>*(❌ Không có `nmcli`)* | ❌ Tránh `4.14 (current)` |
 | **Target & Sensor** | **`22.04.4`** hoặc **`22.04.5`** | [`ubuntu-22.04.5-live-server-amd64.iso` (Tải trực tiếp)](https://releases.ubuntu.com/jammy/ubuntu-22.04.5-live-server-amd64.iso) | **Ubuntu 22.04 LTS** (Lệnh: `netplan`, `apt`) | ❌ Tránh `24.04` (Mới nhất) |
 | **Attacker-Kali** | **`2023.4`** hoặc **`2024.1` / `2024.2`** | File `.7z` (~3.0 GB) từ [Kali VMware Pre-built](https://www.kali.org/get-kali/#kali-virtual-machines) | **Kali Linux (Debian)** (Có sẵn Nmap/Hydra) | Bản Installer ISO tự cài |
 | **Suricata Engine** | **`6.0.x`** hoặc **`7.0.x`** | Cài tự động qua PPA `ppa:oisf/suricata-stable` | NIDS/IPS Engine | Bản mặc định cũ `5.x` |
@@ -223,7 +223,7 @@ Nếu muốn Copy - Paste văn bản và Kéo - Thả file (Drag & Drop) trực 
 * **Máy quản lý:** `Wazuh-SIEM` (`192.168.100.10/24`) | **Nhánh Git:** `feature/wazuh-rules-telegram`
 * **Nhiệm vụ chi tiết:**
   1. Import file `.ova`, đặt RAM 4GB, 2 Cores, mạng **VMnet8**.
-  2. Gán IP tĩnh bằng `systemd-networkd` (Amazon Linux 2023 không dùng `nmcli`) & hạ Heap RAM OpenSearch:
+  2. Gán IP tĩnh & Áp dụng mạng qua dịch vụ `network` & hạ Heap RAM OpenSearch:
      * **Bước 2.1: Tạo thư mục mạng & dọn file rác (Bắt buộc tránh lỗi vi E212):**
        ```bash
        sudo mkdir -p /etc/systemd/network
@@ -246,7 +246,7 @@ Nếu muốn Copy - Paste văn bản và Kéo - Thả file (Drag & Drop) trực 
        ```
      * **Bước 2.3: Áp dụng mạng & hạ tải Heap RAM OpenSearch (tránh đơ máy thật):**
        ```bash
-       sudo systemctl restart systemd-networkd
+       sudo systemctl restart network || sudo reboot
        sudo sed -i 's/-Xms2g/-Xms1g/g' /etc/wazuh-indexer/jvm.options
        sudo sed -i 's/-Xmx2g/-Xmx1g/g' /etc/wazuh-indexer/jvm.options
        sudo systemctl restart wazuh-indexer

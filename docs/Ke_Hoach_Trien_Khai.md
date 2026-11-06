@@ -73,7 +73,7 @@ Cả nhóm chỉ cần chuẩn bị đúng các tệp tin theo con số phiên b
 
 | Thành phần | Con số phiên bản CHÍNH XÁC | Tên tệp tin & Link tải trực tiếp | Dung lượng | Môi trường hệ điều hành | Phiên bản TUYỆT ĐỐI TRÁNH |
 | :--- | :---: | :--- | :--- | :--- | :--- |
-| **Wazuh-SIEM** | **`4.7.x`** hoặc **`4.8.x`** | • Bản 4.7: [`wazuh-4.7.5.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.7.5.ova) — [Doc Wazuh 4.7](https://documentation.wazuh.com/4.7/deployment-options/virtual-machine/virtual-machine.html)<br>• Bản 4.8: [`wazuh-4.8.0.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.8.0.ova) — [Doc Wazuh 4.8](https://documentation.wazuh.com/4.8/deployment-options/virtual-machine/virtual-machine.html) | ~4.5 GB | **Amazon Linux 2023** (Lệnh: `systemd-networkd`, `systemctl`)<br>*(❌ Không có `nmcli`)* | ❌ Tránh `4.14 (current)` |
+| **Wazuh-SIEM** | **`4.7.x`** hoặc **`4.8.x`** | • Bản 4.7: [`wazuh-4.7.5.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.7.5.ova) — [Doc Wazuh 4.7](https://documentation.wazuh.com/4.7/deployment-options/virtual-machine/virtual-machine.html)<br>• Bản 4.8: [`wazuh-4.8.0.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.8.0.ova) — [Doc Wazuh 4.8](https://documentation.wazuh.com/4.8/deployment-options/virtual-machine/virtual-machine.html) | ~4.5 GB | **Amazon Linux** (Dịch vụ mạng: `network`, `vi`)<br>*(❌ Không có `nmcli`)* | ❌ Tránh `4.14 (current)` |
 | **Target & Sensor** | **`22.04.4`** hoặc **`22.04.5`** | [`ubuntu-22.04.5-live-server-amd64.iso` (Tải trực tiếp)](https://releases.ubuntu.com/jammy/ubuntu-22.04.5-live-server-amd64.iso) | ~2.5 GB | **Ubuntu 22.04 LTS** (Lệnh: `netplan`, `apt`) | ❌ Tránh `24.04` (Mới nhất) |
 | **Attacker-Kali** | **`2023.4`** hoặc **`2024.1` / `2024.2`** | File `.7z` từ [Kali VMware Pre-built](https://www.kali.org/get-kali/#kali-virtual-machines) | ~3.0 GB | **Kali Linux (Debian)** (Có sẵn Nmap/Hydra) | Bản Installer ISO tự cài |
 | **Suricata Engine** | **`6.0.x`** hoặc **`7.0.x`** | Cài tự động qua PPA `ppa:oisf/suricata-stable` | N/A | NIDS/IPS Engine | Bản mặc định cũ `5.x` |
@@ -289,6 +289,11 @@ secrets.yml
 # Tệp rác hệ thống
 .DS_Store
 Thumbs.db
+
+# Thư mục cấu hình AI Agent & Giao thức QA cục bộ (Tuyệt đối không commit lên GitHub)
+.agent/
+prompt.md
+promp.md
 ```
 
 ### 5.3. Quy ước nhánh và Commit
@@ -464,7 +469,7 @@ Tạo Template & Clones        Suricata & Nginx             Active Response, Bot
 #### Bước 1: Khởi động máy ảo và gán IP tĩnh
 1. Import file `.ova` vào VMware (xem lại [Mục 4.2](#bước-42-import-máy-ảo-wazuh-siem-từ-file-ova)).
 2. Đăng nhập terminal: user `wazuh-user` / password `wazuh`.
-3. Gán IP tĩnh và gateway bằng `systemd-networkd` *(Wazuh OVA chạy Amazon Linux 2023, không dùng `nmcli`)*:
+3. Gán IP tĩnh và gateway & áp dụng mạng qua dịch vụ `network` *(Wazuh OVA chạy Amazon Linux, không dùng `nmcli`)*:
    * Chạy `ip link` kiểm tra tên card mạng (thường là `eth0` hoặc `ens33`). Giả sử tên card là `eth0`.
    * **Bước 3.1: Tạo thư mục mạng & dọn sạch file rác (Bắt buộc tránh lỗi vi E212):**
      *(Mặc định Amazon Linux 2023 chưa có thư mục /etc/systemd/network/, nếu không tạo thì vi sẽ báo lỗi E212 không lưu được file kể cả dùng quyền root)*
@@ -489,7 +494,7 @@ Tạo Template & Clones        Suricata & Nginx             Active Response, Bot
      ```
    * **Bước 3.3: Áp dụng mạng & kiểm tra kết nối:**
      ```bash
-     sudo systemctl restart systemd-networkd
+     sudo systemctl restart network || sudo reboot
      ip a show eth0
      ping -c 3 8.8.8.8
      ```
