@@ -247,6 +247,8 @@ Các máy chủ Linux Server (Wazuh, Ubuntu Server) chỉ chạy giao diện dò
 ### 5.1. Cấu trúc thư mục kho lưu trữ chuẩn
 ```text
 soc-lab-wazuh-suricata/
+├── .github/workflows/
+│   └── ci.yml                      # CI kiểm tra cú pháp YAML, XML, Script & Secret
 ├── .gitignore                      # Chặn commit file máy ảo, file log, secrets
 ├── README.md                       # Tài liệu tóm tắt kiến trúc mạng, thông số IP và cách chạy lab
 ├── configs/
@@ -262,7 +264,8 @@ soc-lab-wazuh-suricata/
 │   ├── custom-telegram.py          # Script Webhook bắn cảnh báo tự động về Telegram
 │   └── attack_simulation.sh        # Script chạy tự động Nmap/Hydra từ máy Kali
 └── docs/
-    └── topology.png                # Sơ đồ kết nối mạng của hệ thống lab
+    ├── Ke_Hoach_Trien_Khai.md      # Bản kế hoạch kỹ thuật & Runbook chi tiết
+    └── topology.png                # Sơ đồ kết nối mạng của hệ thống lab (tùy chọn)
 ```
 
 ### 5.2. Nội dung file `.gitignore` bắt buộc
@@ -294,6 +297,8 @@ Thumbs.db
 .agent/
 prompt.md
 promp.md
+README_2.md
+README_*.md
 ```
 
 ### 5.3. Quy ước nhánh và Commit

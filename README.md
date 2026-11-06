@@ -409,7 +409,6 @@ soc-lab-wazuh-suricata/
 │   └── ci.yml                      # CI kiểm tra cú pháp YAML, XML, Script & Secret
 ├── .gitignore                      # Chặn commit máy ảo, file log, credentials
 ├── README.md                       # Tài liệu tóm tắt kiến trúc mạng và Runbook
-├── prompt.md                       # QA Protocol kiểm định chống ảo giác AI
 ├── configs/
 │   ├── suricata.yaml               # File cấu hình chuẩn Suricata Engine
 │   ├── netplan-sensor.yaml         # Cấu hình mạng 2 card của Sensor
@@ -423,7 +422,7 @@ soc-lab-wazuh-suricata/
 │   ├── custom-telegram.py          # Script Webhook bắn cảnh báo tự động về Telegram
 │   └── attack_simulation.sh        # Script chạy tự động Nmap/Hydra từ máy Kali
 └── docs/
-    └── Ke_Hoach_Trien_Khai.md      # Bản kế hoạch kỹ thuật & Runbook chi tiết 13 mục
+    └── Ke_Hoach_Trien_Khai.md      # Bản kế hoạch kỹ thuật & Runbook chi tiết
 ```
 
 ---
