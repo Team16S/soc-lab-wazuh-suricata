@@ -32,3 +32,4 @@ if BOT_TOKEN != "YOUR_TELEGRAM_BOT_TOKEN":
         requests.post(url, json={"chat_id": CHAT_ID, "text": message, "parse_mode": "Markdown"}, timeout=5)
     except Exception:
         pass
+
