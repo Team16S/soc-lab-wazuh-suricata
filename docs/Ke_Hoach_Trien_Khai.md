@@ -174,6 +174,42 @@ Mọi thành viên bắt buộc tuân thủ đúng bảng thông số này để
 2. Chọn mục **Memory**: Tại dòng *Additional memory*, tích chọn **Allow most virtual machine memory to be paged** (cho phép hệ điều hành đưa bớt RAM nhàn rỗi xuống pagefile, tránh chiếm trọn RAM vật lý).
 3. Nhấn **OK**.
 
+### Bước 4.7: Hướng dẫn Copy - Paste & Điều khiển từ máy thật (Bí quyết x5 hiệu suất làm lab)
+> ⛔ **CẢNH BÁO LỖI PHỔ BIẾN:**  
+> Tuyệt đối **KHÔNG bấm nút "Install VMware Tools"** trên thanh menu của VMware Workstation. VMware sẽ báo lỗi `Could not find component on update server...` do Broadcom đã thay đổi cụm máy chủ tải về. Tất cả các hệ điều hành Linux hiện đại đều đã tích hợp hoặc sử dụng **`open-vm-tools`** chính thức!
+
+#### 1. Chiến lược chuẩn DevSecOps: SSH trực tiếp từ PowerShell / Windows Terminal
+Các máy chủ Linux Server (Wazuh, Ubuntu Server) chỉ chạy giao diện dòng lệnh (CLI - không có môi trường đồ họa X11), nên console ảo của VMware sẽ không thể bắt clipboard từ Windows một cách mượt mà.  
+**Cách làm chuyên nghiệp:** Sau khi gán IP ở bước đầu tiên, hãy thu nhỏ VMware lại và mở **PowerShell / Windows Terminal** trên máy thật để SSH:
+
+| Máy ảo mục tiêu | Địa chỉ IP | Lệnh SSH từ PowerShell máy thật | Tài khoản / Mật khẩu |
+| :--- | :--- | :--- | :--- |
+| **Wazuh-SIEM** | `192.168.100.10` | `ssh wazuh-user@192.168.100.10` | `wazuh-user` / `wazuh` |
+| **Suricata-Sensor** | `192.168.100.20` | `ssh ubuntu@192.168.100.20` | `ubuntu` / `123` |
+| **Target-Server** | `10.0.0.10` | `ssh ubuntu@10.0.0.10` *(xem lệnh thêm route bên dưới)* | `ubuntu` / `123` |
+| **Attacker-Kali** | `192.168.100.50` | `ssh kali@192.168.100.50` | `kali` / `kali` |
+
+* **Lợi ích:** Bạn hoàn toàn ở trên môi trường máy thật, có thể bôi đen copy bất kỳ khối lệnh cấu hình nào trong tài liệu này và **bấm `Ctrl + V` hoặc nhấp chuột phải** để dán tức thì, không bị sót ký tự, không bị kẹt phím!
+* **Mẹo định tuyến truy cập Target-Server (`10.0.0.10`):** Do Target nằm ở dải mạng nội bộ phía sau Router Sensor, để máy thật Windows có thể ping và SSH trực tiếp vào Target, hãy mở **PowerShell (Run as Administrator)** trên máy thật Windows và chạy 1 lệnh duy nhất:
+  ```powershell
+  route add 10.0.0.0 mask 255.255.255.0 192.168.100.20
+  ```
+
+#### 2. Đối với máy Kali Linux (Giao diện đồ họa Desktop)
+Để Copy - Paste văn bản và Kéo - Thả file (Drag & Drop) trực tiếp hai chiều giữa màn hình Windows và Desktop Kali Linux:
+1. Mở terminal trên Kali Linux và chạy lệnh cài đặt:
+   ```bash
+   sudo apt update && sudo apt install -y open-vm-tools-desktop && sudo reboot
+   ```
+2. Trên giao diện VMware: Chuột phải vào máy `Attacker-Kali` $\rightarrow$ **Settings** $\rightarrow$ Thẻ **Options** $\rightarrow$ **Guest Isolation** $\rightarrow$ Đảm bảo đã tích chọn:
+   * `[x] Enable drag and drop`
+   * `[x] Enable copy and paste`
+
+#### 3. Thao tác bàn phím quan trọng khi chưa có SSH (30 giây đầu cấu hình IP)
+* **Thoát chuột từ màn hình máy ảo về Windows:** Nhấn tổ hợp phím **`Ctrl + Alt`**.
+* **Wazuh (Amazon Linux 2023):** Dùng trình soạn thảo `vi`. Nhấn phím `i` để bắt đầu nhập văn bản, nhập xong nhấn `Esc` rồi gõ `:wq` và ấn `Enter` để lưu thoát.
+* **Ubuntu Server (Sensor/Target):** Dùng `nano`. Nhập xong nhấn `Ctrl + O` $\rightarrow$ `Enter` để lưu, nhấn `Ctrl + X` để thoát.
+
 ---
 
 ## 5. QUY CHUẨN QUẢN TRỊ KHO LƯU TRỮ GITHUB NHÓM
@@ -331,7 +367,7 @@ Khi nhận được thông báo trong nhóm chat có cập nhật mới vừa đ
 
 ## 7. NHỮNG ĐIỀU CẦN LƯU Ý & SAI LẦM CHÍ MẠNG TUYỆT ĐỐI TRÁNH TÁI PHẠM
 
-Mọi thành viên phải đọc kỹ 6 sai lầm kinh điển sau để không làm hỏng bài lab:
+Mọi thành viên phải đọc kỹ 7 sai lầm kinh điển sau để không làm hỏng bài lab:
 
 1. **Sai lầm 1: Kali không thêm Static Route sang dải Target**
    * *Hiện tượng:* Kali gõ `nmap 10.0.0.10` báo `Host seems down`, không thể tấn công.
@@ -352,6 +388,13 @@ Mọi thành viên phải đọc kỹ 6 sai lầm kinh điển sau để không 
 6. **Sai lầm 6: Quên phân quyền cho script `custom-telegram.py`**
    * *Hiện tượng:* Wazuh sinh cảnh báo mức 10+ nhưng Telegram không có tin nhắn.
    * *Cách khắc phục:* Bắt buộc chạy lệnh `sudo chmod 750 /var/ossec/integrations/custom-telegram.py` và `sudo chown root:wazuh /var/ossec/integrations/custom-telegram.py`.
+7. **Sai lầm 7: Cố gắng copy/paste qua màn hình Console của VMware thay vì SSH từ máy thật**
+   * *Hiện tượng:* Không thể dán lệnh từ tài liệu vào máy ảo, hoặc bấm "Install VMware Tools" trên VMware bị lỗi `Could not find component on update server`.
+   * *Nguyên nhân:* Server Broadcom đã đóng đường dẫn tải cũ của VMware Tools; hơn nữa các bản Linux Server (Wazuh, Ubuntu CLI) không có giao diện đồ họa X11 nên console VMware không nhận clipboard từ Windows.
+   * *Cách khắc phục:* 
+     * **KHÔNG bấm "Install VMware Tools" trên VMware.**
+     * Gõ cấu hình IP ban đầu (chỉ mất 30s), sau đó **mở PowerShell trên máy thật (Windows) và SSH trực tiếp vào IP máy ảo** (`ssh user@IP`). Từ terminal máy thật, copy-paste bằng `Ctrl + V` hoặc Chuột phải mượt mà 100%.
+     * Đối với máy Kali Linux (có desktop): Chạy lệnh `sudo apt install -y open-vm-tools-desktop && sudo reboot` và bật tính năng `Guest Isolation` trong VM Settings.
 
 ---
 
@@ -411,6 +454,7 @@ Tạo Template & Clones        Suricata & Nginx             Active Response, Bot
      ```
      > **Mẹo sống còn trên VMware:**
      > * Thoát con trỏ chuột khỏi màn hình máy ảo VMware ra Windows: Nhấn **`Ctrl + Alt`**.
+     > * **Chuyển sang SSH từ máy thật ngay:** Mở PowerShell trên Windows và gõ `ssh wazuh-user@192.168.100.10` (pass: `wazuh`) để paste các lệnh cấu hình bên dưới cực nhanh mà không lo kẹt phím!
 
 #### Bước 2: Hạ tải Java Heap Size OpenSearch (Bắt buộc tránh đơ máy thật)
 ```bash
@@ -528,7 +572,8 @@ sudo systemctl restart wazuh-manager
        ens34:
          addresses: [10.0.0.1/24]
    ```
-   Áp dụng mạng: `sudo netplan apply`.
+   Áp dụng mạng: `sudo netplan apply`.  
+   *(Mẹo Copy/Paste: Ngay sau khi apply mạng thành công, hãy chuyển sang PowerShell trên máy thật Windows và gõ `ssh ubuntu@192.168.100.20` với pass `123` để paste các lệnh cấu hình bên dưới cực nhanh mà không lo kẹt phím!)*
 
 #### Bước 2: Kích hoạt Router IP Forwarding & NAT Masquerade
 ```bash
@@ -623,7 +668,8 @@ Khởi động lại Suricata: `sudo systemctl restart suricata`.
            addresses: [8.8.8.8, 1.1.1.1]
    ```
    Áp dụng: `sudo netplan apply`.  
-   *Kiểm tra thông mạng:* `ping -c 3 8.8.8.8` (Nếu không có mạng, báo Thành viên 2 kiểm tra NAT Forwarding).
+   *Kiểm tra thông mạng:* `ping -c 3 8.8.8.8` (Nếu không có mạng, báo Thành viên 2 kiểm tra NAT Forwarding).  
+   *(Mẹo Copy/Paste: Mở PowerShell Admin trên máy thật gõ `route add 10.0.0.0 mask 255.255.255.0 192.168.100.20`, sau đó gõ `ssh ubuntu@10.0.0.10` để paste lệnh cài Nginx và Agent cực nhanh).*
 
 ##### Bước 2: Cài Nginx Web Server
 ```bash
@@ -665,7 +711,8 @@ sudo systemctl enable nginx && sudo systemctl start nginx
    sudo ip route add 10.0.0.0/24 via 192.168.100.20
    ```
    *Kiểm tra kết nối:* `curl -I http://10.0.0.10` (phải trả về mã `HTTP/1.1 200 OK`).  
-   *(Lưu ý: Lệnh `ip route add` nằm trong RAM, nếu Kali reboot bạn phải chạy lại hoặc đưa vào script `attack_simulation.sh`).*
+   *(Lưu ý: Lệnh `ip route add` nằm trong RAM, nếu Kali reboot bạn phải chạy lại hoặc đưa vào script `attack_simulation.sh`).*  
+   *(Mẹo Copy/Paste: Chạy `sudo apt install -y open-vm-tools-desktop && sudo reboot` để copy-paste mượt mà trên Desktop Kali, hoặc SSH từ PowerShell máy thật `ssh kali@192.168.100.50` với pass `kali`).*
 
 ##### Bước 2: Thực thi các kịch bản kiểm thử tấn công
 * **Chuẩn bị từ điển trên Kali (Bắt buộc giải nén):**

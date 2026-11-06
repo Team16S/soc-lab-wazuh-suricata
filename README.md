@@ -154,6 +154,44 @@ Hệ thống thiết lập một trung tâm điều hành an ninh mạng (SOC) t
 
 ---
 
+## 💡 MẸO SỐNG CÒN: COPY - PASTE TỪ MÁY THẬT (WINDOWS) VÀO CẢ 4 MÁY ẢO
+
+> ⛔ **CẢNH BÁO LỖI PHỔ BIẾN:**  
+> Tuyệt đối **KHÔNG bấm nút "Install VMware Tools"** trên thanh menu của VMware Workstation. VMware sẽ báo lỗi `Could not find component on update server...` vì Broadcom đã đóng server tải cũ. Toàn bộ máy ảo Linux hiện đại đều sử dụng **`open-vm-tools`** chính thức!
+
+### 1. Bí quyết chuẩn DevSecOps: SSH trực tiếp từ máy thật (PowerShell / Windows Terminal)
+Thay vì gõ lệnh trên màn hình console đen sì, chật hẹp của VMware (dễ kẹt phím, không nhận chuột), sau khi gán xong IP ở bước đầu, **hãy thu nhỏ VMware lại và mở PowerShell trên máy thật Windows**:
+
+| Máy ảo | Địa chỉ IP | Lệnh SSH từ PowerShell / Windows Terminal máy thật | Mật khẩu mặc định |
+| :--- | :--- | :--- | :--- |
+| **Wazuh-SIEM** | `192.168.100.10` | `ssh wazuh-user@192.168.100.10` | `wazuh` |
+| **Suricata-Sensor** | `192.168.100.20` | `ssh ubuntu@192.168.100.20` | `123` |
+| **Target-Server** | `10.0.0.10` | `ssh ubuntu@10.0.0.10` *(xem lưu ý route bên dưới)* | `123` |
+| **Attacker-Kali** | `192.168.100.50` | `ssh kali@192.168.100.50` | `kali` |
+
+* **Lợi ích tuyệt đối:** Bạn có thể bôi đen copy bất kỳ đoạn script nào trong tài liệu này và **nhấn `Ctrl + V` hoặc click chuột phải** để paste ngay vào máy ảo cực nhanh, không sót ký tự!
+* **Mẹo cho máy Target (`10.0.0.10` nằm sau Router):** Để máy thật Windows có thể ping và SSH thẳng vào Target, mở PowerShell **Run as Administrator** trên Windows và chạy lệnh thêm route:
+  ```powershell
+  route add 10.0.0.0 mask 255.255.255.0 192.168.100.20
+  ```
+
+### 2. Đối với máy Kali Linux (Giao diện đồ họa Desktop)
+Nếu muốn Copy - Paste văn bản và Kéo - Thả file (Drag & Drop) trực tiếp giữa màn hình Windows và Desktop Kali Linux:
+1. Mở terminal trên Kali và chạy:
+   ```bash
+   sudo apt update && sudo apt install -y open-vm-tools-desktop && sudo reboot
+   ```
+2. Trên VMware: Vào **VM** $\rightarrow$ **Settings** $\rightarrow$ **Options** $\rightarrow$ **Guest Isolation** $\rightarrow$ Tích chọn cả:
+   * `[x] Enable drag and drop`
+   * `[x] Enable copy and paste`
+
+### 3. Ghi nhớ thao tác bàn phím khi chưa có SSH (30 giây đầu cấu hình IP)
+- **Thoát chuột khỏi máy ảo về lại Windows:** Nhấn tổ hợp phím **`Ctrl + Alt`**.
+- **Wazuh (Amazon Linux 2023):** Dùng trình soạn thảo `vi`. Nhấn `i` để gõ, gõ xong nhấn `Esc` rồi gõ `:wq` và ấn `Enter`.
+- **Ubuntu (Sensor/Target):** Dùng `nano`. Gõ xong nhấn `Ctrl + O` $\rightarrow$ `Enter` để lưu, `Ctrl + X` để thoát.
+
+---
+
 ## 👥 6. Phân công trách nhiệm 3 người & Hướng dẫn kỹ thuật chi tiết
 
 ### 🟢 THÀNH VIÊN 1: SIEM & Integration Lead (Bộ não trung tâm)
@@ -189,6 +227,7 @@ Hệ thống thiết lập một trung tâm điều hành an ninh mạng (SOC) t
        ```
        > **Mẹo sống còn trên VMware:**
        > * Thoát con trỏ chuột khỏi màn hình máy ảo VMware ra Windows: Nhấn **`Ctrl + Alt`**.
+       > * **Chuyển sang SSH từ máy thật ngay:** Mở PowerShell trên Windows và gõ `ssh wazuh-user@192.168.100.10` (pass: `wazuh`) để paste các lệnh cấu hình bên dưới cực nhanh mà không lo kẹt phím!
   3. Đăng nhập Web Dashboard:
      * Mặc định tài khoản Web bản OVA là: `admin` / `admin`.
      * Nếu có file mật khẩu ngẫu nhiên, đọc bằng lệnh:
@@ -223,7 +262,8 @@ Hệ thống thiết lập một trung tâm điều hành an ninh mạng (SOC) t
          ens34:
            addresses: [10.0.0.1/24]
      ```
-     Chạy `sudo netplan apply`.
+     Chạy `sudo netplan apply`.  
+     *(Sau khi apply mạng xong, chuyển sang PowerShell máy thật gõ `ssh ubuntu@192.168.100.20` với pass `123` để paste các lệnh bên dưới cực nhanh!)*
   3. Bật IP Forwarding và NAT Masquerade (Bắt buộc cài iptables-persistent tránh mất rule khi reboot):
      ```bash
      sudo sed -i 's/#net.ipv4.ip_forward=1/net.ipv4.ip_forward=1/g' /etc/sysctl.conf && sudo sysctl -p
@@ -250,10 +290,12 @@ Hệ thống thiết lập một trung tâm điều hành an ninh mạng (SOC) t
 * **Máy quản lý:** `Target-Server` (`10.0.0.10`) & `Attacker-Kali` (`192.168.100.50`) | **Nhánh Git:** `feature/target-hardening-attacks`
 * **Nhiệm vụ chi tiết:**
   1. Tạo Linked Clone Target-Server, gán mạng **VMnet2**, đặt IP `10.0.0.10/24`, Gateway `10.0.0.1`.
-     * Kiểm tra thông mạng: `ping -c 3 8.8.8.8`.
+     * Kiểm tra thông mạng: `ping -c 3 8.8.8.8`.  
+     * *(Mẹo Copy/Paste: Mở PowerShell Admin trên máy thật gõ `route add 10.0.0.0 mask 255.255.255.0 192.168.100.20`, sau đó gõ `ssh ubuntu@10.0.0.10` để paste lệnh cài Nginx và Agent cực nhanh).*
      * Cài Nginx Web Server: `sudo apt update && sudo apt install nginx -y`.
      * Cài đặt Wazuh Agent trỏ về Manager `192.168.100.10` và cấu hình FIM `<syscheck>` giám sát `/var/www/html`.
-  2. Thiết lập máy Kali Linux: Gán mạng **VMnet8**, IP `192.168.100.50/24`.
+  2. Thiết lập máy Kali Linux: Gán mạng **VMnet8**, IP `192.168.100.50/24`.  
+     *(Mẹo Copy/Paste: Chạy `sudo apt install -y open-vm-tools-desktop && sudo reboot` để copy-paste trên Desktop Kali, hoặc SSH từ PowerShell máy thật `ssh kali@192.168.100.50` với pass `kali`).*
      * **Bắt buộc thêm Static Route sang dải Target:**
        ```bash
        sudo ip route add 10.0.0.0/24 via 192.168.100.20

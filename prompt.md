@@ -78,6 +78,17 @@ Sau khi đối chiếu nghiêm ngặt với thực tế máy ảo VMware của 3
 
 ---
 
+### ❌ Điểm sai 10: Ảo giác về "Install VMware Tools" và thiếu cẩm nang Copy-Paste cho cả 4 máy ảo
+* **Lỗi & Thiếu sót của AI:** Không cảnh báo trước việc bấm nút "Install VMware Tools" trên menu VMware Workstation sẽ bị lỗi chết cứng `Could not find component on update server` (do Broadcom đã đổi cụm server cập nhật); thiếu cẩm nang SSH từ máy thật khiến thành viên phải gõ tay hàng chục dòng lệnh phức tạp trên màn hình console đen sì của VMware.
+* **Hậu quả thực tế:** Người dùng mất thời gian sửa lỗi VMware Tools không cần thiết, thao tác console dễ bị lỗi font, gõ sai ký tự, kẹt con trỏ chuột.
+* **Bản sửa đổi chuẩn xác:**
+  * Cảnh báo rõ ràng: **Tuyệt đối KHÔNG bấm "Install VMware Tools" trên VMware**; toàn bộ hệ thống dùng `open-vm-tools` của Linux.
+  * Thêm cẩm nang SSH trực tiếp từ PowerShell máy thật cho cả 4 máy ảo (`192.168.100.10`, `192.168.100.20`, `10.0.0.10`, `192.168.100.50`) để thoải mái Copy - Paste bằng `Ctrl + V` hoặc Chuột phải.
+  * Thêm lệnh định tuyến trên máy thật Windows: `route add 10.0.0.0 mask 255.255.255.0 192.168.100.20` giúp máy thật SSH trực tiếp vào Target ở dải nội bộ LAN.
+  * Cung cấp gói `open-vm-tools-desktop` cho Kali Linux để bật clipboard và kéo thả file hai chiều trên giao diện Desktop.
+
+---
+
 ## 📋 PHẦN 2: CHECKLIST BẮT BUỘC CHẠY LẠI SAU MỖI TASK/ISSUE
 
 Mỗi khi Agent hoàn thành bất kỳ Issue nào, **BẮT BUỘC** phải rà soát qua 6 cánh cổng kiểm định sau:
