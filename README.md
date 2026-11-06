@@ -223,37 +223,42 @@ Nếu muốn Copy - Paste văn bản và Kéo - Thả file (Drag & Drop) trực 
 * **Máy quản lý:** `Wazuh-SIEM` (`192.168.100.10/24`) | **Nhánh Git:** `feature/wazuh-rules-telegram`
 * **Nhiệm vụ chi tiết:**
   1. Import file `.ova`, đặt RAM 4GB, 2 Cores, mạng **VMnet8**.
-  2. Gán IP tĩnh & Áp dụng mạng qua dịch vụ `network` & hạ Heap RAM OpenSearch:
-     * **Bước 2.1: Tạo thư mục mạng & dọn file rác (Bắt buộc tránh lỗi vi E212):**
+  2. Gán IP tĩnh `192.168.100.10` & hạ tải Heap RAM OpenSearch (Tuyệt chiêu SSH máy thật):
+     * **Bước 2.1: Xem IP DHCP tạm thời trên console máy ảo:**
        ```bash
-       sudo mkdir -p /etc/systemd/network
-       sudo rm -f /etc/systemd/network/10-static-eth0.network /var/tmp/*.swp 2>/dev/null
+       ip a
        ```
-     * **Bước 2.2: Dùng trình soạn thảo `vi` (100% có sẵn trên máy ảo):**
+       *(Tìm dòng `inet 192.168.100.xxx` ở card `eth0`, ví dụ: `192.168.100.130`).*
+     * **Bước 2.2: Thu nhỏ VMware, mở PowerShell máy thật SSH vào ngay:**
+       ```powershell
+       ssh wazuh-user@192.168.100.xxx   # Thay xxx bằng số IP vừa xem (pass: wazuh)
+       ```
+     * **Bước 2.3: Trên cửa sổ SSH máy thật, paste khối lệnh ghi đè file ifcfg-eth0:**
        ```bash
-       sudo vi /etc/systemd/network/10-static-eth0.network
+       sudo -i
+       cat << 'EOF' > /etc/sysconfig/network-scripts/ifcfg-eth0
+       DEVICE=eth0
+       BOOTPROTO=none
+       ONBOOT=yes
+       IPADDR=192.168.100.10
+       NETMASK=255.255.255.0
+       GATEWAY=192.168.100.2
+       DNS1=8.8.8.8
+       DNS2=1.1.1.1
+       EOF
+       systemctl restart network
        ```
-       *(Nhấn phím `i` để bắt đầu nhập $\rightarrow$ Gõ nội dung bên dưới $\rightarrow$ Nhấn `Esc` rồi gõ `:wq` và bấm `Enter` để lưu thoát)*
-       ```ini
-       [Match]
-       Name=eth0
-
-       [Network]
-       Address=192.168.100.10/24
-       Gateway=192.168.100.2
-       DNS=8.8.8.8
-       DNS=1.1.1.1
+       *(Sau khi áp dụng, phiên SSH cũ tự ngắt vì IP đã đổi sang `192.168.100.10`).*
+     * **Bước 2.4: Kết nối lại SSH bằng IP tĩnh chuẩn và hạ Heap RAM:**
+       ```powershell
+       ssh wazuh-user@192.168.100.10
        ```
-     * **Bước 2.3: Áp dụng mạng & hạ tải Heap RAM OpenSearch (tránh đơ máy thật):**
+       Dán lệnh hạ tải Heap RAM OpenSearch (tránh đơ máy thật):
        ```bash
-       sudo systemctl restart network || sudo reboot
        sudo sed -i 's/-Xms2g/-Xms1g/g' /etc/wazuh-indexer/jvm.options
        sudo sed -i 's/-Xmx2g/-Xmx1g/g' /etc/wazuh-indexer/jvm.options
        sudo systemctl restart wazuh-indexer
        ```
-       > **Mẹo sống còn trên VMware:**
-       > * Thoát con trỏ chuột khỏi màn hình máy ảo VMware ra Windows: Nhấn **`Ctrl + Alt`**.
-       > * **Chuyển sang SSH từ máy thật ngay:** Mở PowerShell trên Windows và gõ `ssh wazuh-user@192.168.100.10` (pass: `wazuh`) để paste các lệnh cấu hình bên dưới cực nhanh mà không lo kẹt phím!
   3. Đăng nhập Web Dashboard:
      * Mặc định tài khoản Web bản OVA là: `admin` / `admin`.
      * Nếu có file mật khẩu ngẫu nhiên, đọc bằng lệnh:

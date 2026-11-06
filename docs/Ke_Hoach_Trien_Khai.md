@@ -466,41 +466,39 @@ Tạo Template & Clones        Suricata & Nginx             Active Response, Bot
 * **Nhánh Git làm việc:** `feature/wazuh-rules-telegram`
 * **Nhiệm vụ cốt lõi:** Dựng máy chủ SIEM, hạ tải RAM OpenSearch, cấu hình phân tích tương quan, thiết lập danh sách trắng (whitelist) chống tự chặn, tích hợp Webhook Telegram bắn cảnh báo khẩn.
 
-#### Bước 1: Khởi động máy ảo và gán IP tĩnh
+#### Bước 1: Khởi động máy ảo và gán IP tĩnh 192.168.100.10 (Tuyệt chiêu SSH máy thật)
 1. Import file `.ova` vào VMware (xem lại [Mục 4.2](#bước-42-import-máy-ảo-wazuh-siem-từ-file-ova)).
 2. Đăng nhập terminal: user `wazuh-user` / password `wazuh`.
-3. Gán IP tĩnh và gateway & áp dụng mạng qua dịch vụ `network` *(Wazuh OVA chạy Amazon Linux, không dùng `nmcli`)*:
-   * Chạy `ip link` kiểm tra tên card mạng (thường là `eth0` hoặc `ens33`). Giả sử tên card là `eth0`.
-   * **Bước 3.1: Tạo thư mục mạng & dọn sạch file rác (Bắt buộc tránh lỗi vi E212):**
-     *(Mặc định Amazon Linux 2023 chưa có thư mục /etc/systemd/network/, nếu không tạo thì vi sẽ báo lỗi E212 không lưu được file kể cả dùng quyền root)*
+3. Khi máy ảo khởi động lên mạng NAT VMnet8, VMware tự động cấp IP động qua DHCP:
+   * **Bước 3.1: Xem IP DHCP tạm thời hiện tại:**
      ```bash
-     sudo mkdir -p /etc/systemd/network
-     sudo rm -f /etc/systemd/network/10-static-eth0.network /var/tmp/*.swp 2>/dev/null
+     ip a
      ```
-   * **Bước 3.2: Dùng trình soạn thảo `vi` (100% có sẵn trên Amazon Linux 2023):**
+     *(Tìm dòng `inet 192.168.100.xxx` ở card `eth0`, ví dụ: `192.168.100.130`)*.
+   * **Bước 3.2: Mở PowerShell máy thật Windows và SSH vào ngay:**
+     ```powershell
+     ssh wazuh-user@192.168.100.xxx   # Thay xxx bằng IP vừa xem (mật khẩu: wazuh)
+     ```
+   * **Bước 3.3: Trên cửa sổ SSH máy thật, paste khối lệnh ghi đè file ifcfg-eth0 để gán tĩnh 192.168.100.10:**
      ```bash
-     sudo vi /etc/systemd/network/10-static-eth0.network
+     sudo -i
+     cat << 'EOF' > /etc/sysconfig/network-scripts/ifcfg-eth0
+     DEVICE=eth0
+     BOOTPROTO=none
+     ONBOOT=yes
+     IPADDR=192.168.100.10
+     NETMASK=255.255.255.0
+     GATEWAY=192.168.100.2
+     DNS1=8.8.8.8
+     DNS2=1.1.1.1
+     EOF
+     systemctl restart network
      ```
-     *(Nhấn phím `i` để bắt đầu nhập $\rightarrow$ Gõ nội dung bên dưới $\rightarrow$ Nhấn `Esc` rồi gõ `:wq` và bấm `Enter` để lưu thoát)*
-     ```ini
-     [Match]
-     Name=eth0
-
-     [Network]
-     Address=192.168.100.10/24
-     Gateway=192.168.100.2
-     DNS=8.8.8.8
-     DNS=1.1.1.1
+     *(Sau khi restart network, phiên SSH cũ sẽ tự ngắt vì IP đã đổi sang `192.168.100.10`)*.
+   * **Bước 3.4: Kết nối lại bằng IP tĩnh chuẩn:**
+     ```powershell
+     ssh wazuh-user@192.168.100.10
      ```
-   * **Bước 3.3: Áp dụng mạng & kiểm tra kết nối:**
-     ```bash
-     sudo systemctl restart network || sudo reboot
-     ip a show eth0
-     ping -c 3 8.8.8.8
-     ```
-     > **Mẹo sống còn trên VMware:**
-     > * Thoát con trỏ chuột khỏi màn hình máy ảo VMware ra Windows: Nhấn **`Ctrl + Alt`**.
-     > * **Chuyển sang SSH từ máy thật ngay:** Mở PowerShell trên Windows và gõ `ssh wazuh-user@192.168.100.10` (pass: `wazuh`) để paste các lệnh cấu hình bên dưới cực nhanh mà không lo kẹt phím!
 
 #### Bước 2: Hạ tải Java Heap Size OpenSearch (Bắt buộc tránh đơ máy thật)
 ```bash
