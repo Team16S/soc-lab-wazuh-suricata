@@ -59,9 +59,30 @@ jobs:
             echo "==> Tat ca cac file XML & Wazuh Config (.conf) hop le!"
           fi
 
+          # Kiem tra tinh duy nhat va dai Rule ID cua Wazuh (Custom Rules phai >= 100000)
+          wazuh_rule_files=(rules/*.xml)
+          if [ ${#wazuh_rule_files[@]} -gt 0 ]; then
+            echo "=== Kiem tra dac ta Wazuh Custom Rule IDs ==="
+            rule_ids=$(grep -oE 'rule id="[0-9]+"' "${wazuh_rule_files[@]}" 2>/dev/null | grep -oE '[0-9]+' || true)
+            if [ -n "$rule_ids" ]; then
+              duplicates=$(echo "$rule_ids" | sort | uniq -d)
+              if [ -n "$duplicates" ]; then
+                echo "::error::Phat hien trung lap Rule ID trong Wazuh Rules: $duplicates"
+                exit 1
+              fi
+              for rid in $rule_ids; do
+                if [ "$rid" -lt 100000 ]; then
+                  echo "::error::Wazuh Rule ID $rid khong hop le! Custom rule bat buoc phai >= 100000 de tranh ghi de rule goc cua he thong."
+                  exit 1
+                fi
+              done
+              echo "==> Tat ca cac Wazuh Custom Rule ID hop le (>= 100000) va duy nhat!"
+            fi
+          fi
+
       - name: 3. Validate Suricata Rules (*.rules)
         run: |
-          echo "=== Kiem tra cu phap cac file Suricata Signatures (*.rules) ==="
+          echo "=== Kiem tra cu phap va tinh duy nhat cua Suricata Signatures (*.rules) ==="
           shopt -s nullglob
           rules_files=(rules/*.rules)
           if [ ${#rules_files[@]} -eq 0 ]; then
@@ -80,12 +101,19 @@ jobs:
                 fi
               done
             done
-            echo "==> Tat ca cac file Suricata Rules hop le!"
+
+            # Kiem tra chong trung lap SID giua cac rule
+            DUPLICATES=$(grep -oE 'sid:[0-9]+;' "${rules_files[@]}" 2>/dev/null | cut -d: -f2- | sort | uniq -d)
+            if [ -n "$DUPLICATES" ]; then
+              echo "::error::Phat hien sid bi trung lap trong tap luat Suricata: $DUPLICATES"
+              exit 1
+            fi
+            echo "==> Tat ca cac file Suricata Rules hop le va khong co SID trung lap!"
           fi
 
       - name: 4. Validate Python Scripts (*.py)
         run: |
-          echo "=== Kiem tra loi bien dich cu phap Python ==="
+          echo "=== Kiem tra loi bien dich cu phap & Shebang Python ==="
           shopt -s nullglob
           py_files=(scripts/*.py)
           if [ ${#py_files[@]} -eq 0 ]; then
@@ -94,40 +122,76 @@ jobs:
             for f in "${py_files[@]}"; do
               echo "Compiling Python: $f"
               python3 -m py_compile "$f"
+
+              # Kiem tra dong Shebang
+              head_line=$(head -n 1 "$f")
+              if ! echo "$head_line" | grep -Eq '^#!/(usr/bin/env python3|usr/bin/python3)'; then
+                echo "::warning file=$f::Script Python nen co Shebang '#!/usr/bin/env python3' o dong dau tien."
+              fi
             done
             echo "==> Tat ca cac file Python khong co loi cu phap!"
           fi
 
       - name: 5. Validate Shell Scripts (*.sh)
         run: |
-          echo "=== Kiem tra cu phap Shell script (Bash) ==="
+          echo "=== Kiem tra cu phap Shell, ky tu xuong dong CRLF & Shebang ==="
           shopt -s nullglob
           sh_files=(scripts/*.sh)
           if [ ${#sh_files[@]} -eq 0 ]; then
             echo "Chua co script Shell trong scripts/."
           else
             for f in "${sh_files[@]}"; do
-              echo "Checking Bash syntax: $f"
+              echo "Checking Shell script: $f"
+
+              # 1. Chặn ký tự xuống dòng Windows (CRLF) gây lỗi /bin/bash^M trên Linux
+              if grep -q $'\r' "$f"; then
+                echo "::error file=$f::Phat hien ky tu xuong dong Windows (CRLF)! Vui long chuyen sang dinh dang Linux (LF) de tranh loi '/bin/bash^M: bad interpreter'."
+                exit 1
+              fi
+
+              # 2. Kiểm tra dòng Shebang
+              head_line=$(head -n 1 "$f")
+              if ! echo "$head_line" | grep -Eq '^#!/(bin/bash|bin/sh|usr/bin/env bash)'; then
+                echo "::error file=$f::Shell script thieu Shebang hop le (vd: '#!/bin/bash') o dong dau tien!"
+                exit 1
+              fi
+
+              # 3. Kiểm tra cú pháp Bash
               bash -n "$f"
             done
-            echo "==> Tat ca cac file Bash hop le!"
+            echo "==> Tat ca cac file Bash hop le (chuan LF, co Shebang, khong loi cu phap)!"
           fi
 
-      - name: 6. Secret Leak Check (Chay tren toan bo kho ma nguon & ca tai lieu)
+      - name: 6. Secret & Sensitive Files Leak Check
         run: |
-          echo "=== Quet chong lo token nhay cam tren toan bo kho luu tru ==="
+          echo "=== Quet chong lo token nhay cam va file cam tren toan bo kho luu tru ==="
+          # Quet Telegram Bot Token that (vd: 123456789:ABCdef...)
           if grep -rEI "[0-9]{8,10}:[a-zA-Z0-9_-]{35}" configs/ scripts/ rules/ docs/ *.md 2>/dev/null; then
             echo "::error::Phat hien Telegram Bot Token that trong kho ma nguon hoac tai lieu! Hay thay the bang chuoi gia dinh 'YOUR_TELEGRAM_BOT_TOKEN'."
             exit 1
           fi
 
+          # Quet Discord Webhook Token that (vd: https://discord.com/api/webhooks/123.../abc...)
+          if grep -rEI "https://(discord|discordapp)\.com/api/webhooks/[0-9]{17,20}/[a-zA-Z0-9_-]{50,}" configs/ scripts/ rules/ docs/ *.md 2>/dev/null; then
+            echo "::error::Phat hien Discord Webhook Token that trong kho ma nguon hoac tai lieu! Hay thay the bang chuoi gia dinh 'https://discord.com/api/webhooks/YOUR_WEBHOOK_ID/YOUR_WEBHOOK_TOKEN'."
+            exit 1
+          fi
+
+          # Quet Private Key (RSA, EC, OPENSSH)
           if grep -rEI "BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY" . --exclude-dir=".git" 2>/dev/null; then
             echo "::error::Phat hien Private Key bi commit vao repo!"
             exit 1
           fi
 
-          echo "==> Khong phat hien lo secret hay token nhay cam!"
+          # Quet cac file nhay cam bi ep commit (git add -f)
+          SENSITIVE_FILES=$(find . -type f \( -name "wazuh-passwords.txt" -o -name "*.vmdk" -o -name "*.vmem" -o -name "*.nvram" -o -name "eve.json" \) ! -path "./.git/*")
+          if [ -n "$SENSITIVE_FILES" ]; then
+            echo "::error::Phat hien tep tin nhay cam hoac dia ao bi commit vao repo: $SENSITIVE_FILES"
+            exit 1
+          fi
+
+          echo "==> Khong phat hien lo secret, token nhay cam hoac file cam trong repo!"
 
       - name: Final Result Status
         run: |
-          echo "✅ SUCCESS: Tat ca cac file ky thuat da PASS 100% (YAML, XML/CONF, RULES, PYTHON, BASH, SECRETS)!"
+          echo "✅ SUCCESS: Tat ca cac file ky thuat da PASS 100% (YAML, XML/CONF, WAZUH_RULES, SURICATA_RULES, PYTHON, BASH_LF_SHEBANG, SECRETS, SENSITIVE_FILES)!"
