@@ -43,7 +43,9 @@ desktop.ini
 *.swp
 *~
 
-# Thư mục cấu hình AI Agent cục bộ (Antigravity Skills)
+# Thư mục tài liệu tham khảo ngoại lai (không thuộc đề tài)
+docs_2/
+
 .agent/
 
 # File giao thức QA & nhắc việc Agent cục bộ (Chỉ dùng môi trường cá nhân, tuyệt đối không commit)
@@ -60,3 +62,4 @@ assets/
 session_summary.md
 docs/ANTI_HALLUCINATION_TRUTH.md
 docs/Bao_Cao_Do_An_An_Ninh_Mang.md
+docs/Ke_Hoach_Tai_Cau_Truc_Readme.md
