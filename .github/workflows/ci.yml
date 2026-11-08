@@ -16,70 +16,19 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 2
-
-      - name: Smart Document Filter & Fast-Pass Check
-        id: filter
-        run: |
-          echo "=== Kiem tra danh sach cac file thay doi ==="
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            git fetch origin ${{ github.base_ref }} --depth=1 || true
-            ALL_CHANGED=$(git diff --name-only origin/${{ github.base_ref }}...HEAD || true)
-          else
-            ALL_CHANGED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null || echo "init")
-          fi
-
-          echo "Danh sach tep tin trong commit/PR:"
-          echo "$ALL_CHANGED"
-
-          # Whitelist DUY NHAT cac tai lieu hop le cua do an theo dung kien truc chuan:
-          # - README.md, .gitignore
-          # - docs/Ke_Hoach_Trien_Khai.md
-          # - docs/*.png, docs/*.jpg, docs/*.jpeg, docs/*.svg, docs/*.webp (diagram)
-          DOCS_WHITELIST_REGEX='^(\.gitignore|README\.md|docs/Ke_Hoach_Trien_Khai\.md|docs/.*\.(png|jpg|jpeg|svg|webp))$'
-          NON_DOCS=$(echo "$ALL_CHANGED" | grep -v -E "$DOCS_WHITELIST_REGEX" || true)
-
-          if [ -z "$NON_DOCS" ] && [ -n "$ALL_CHANGED" ]; then
-            echo "IS_DOCS_ONLY=true" >> $GITHUB_ENV
-            echo "⚡ FAST PASS: 100% thay doi thuoc danh muc tai lieu chuan cua do an. Bo qua buoc cai dat tool nang!"
-          else
-            echo "IS_DOCS_ONLY=false" >> $GITHUB_ENV
-            echo "Phat hien co file ky thuat hoac file ngoai danh muc tai lieu chuan. Kich hoat kiem tra toan dien!"
-          fi
-
-      - name: Verify Document Whitelist & Structure Integrity
-        run: |
-          echo "=== Kiem tra tinh toan ven danh muc tai lieu do an ==="
-          find . -maxdepth 3 -name "*.md" | grep -v "\.git" | while read -r md_file; do
-            clean_path=$(echo "$md_file" | sed 's|^\./||')
-            case "$clean_path" in
-              "README.md"|"docs/Ke_Hoach_Trien_Khai.md")
-                echo "Valid project document: $clean_path"
-                ;;
-              *)
-                echo "::error file=$clean_path::File tai lieu nay KHONG thuoc danh muc chuan cua de tai do an (soc-lab-wazuh-suricata)! Vui long xoa hoac luu dung quy dinh."
-                exit 1
-                ;;
-            esac
-          done
-          echo "==> Danh muc tai lieu tuan thu 100% cau truc chuan cua do an!"
 
       - name: Setup Python environment
-        if: env.IS_DOCS_ONLY != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
 
       - name: Install Linting & Validation Tools
-        if: env.IS_DOCS_ONLY != 'true'
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y libxml2-utils shellcheck
           pip install pyyaml
 
       - name: 1. Validate YAML Configuration Files (*.yaml, *.yml)
-        if: env.IS_DOCS_ONLY != 'true'
         run: |
           echo "=== Kiem tra cu phap cac file YAML ==="
           python3 -c "
@@ -96,7 +45,6 @@ jobs:
           "
 
       - name: 2. Validate XML Rules & Config Files (*.xml, *.conf)
-        if: env.IS_DOCS_ONLY != 'true'
         run: |
           echo "=== Kiem tra cu phap cac file XML & Wazuh Config (*.xml, *.conf) ==="
           shopt -s nullglob
@@ -112,7 +60,6 @@ jobs:
           fi
 
       - name: 3. Validate Suricata Rules (*.rules)
-        if: env.IS_DOCS_ONLY != 'true'
         run: |
           echo "=== Kiem tra cu phap cac file Suricata Signatures (*.rules) ==="
           shopt -s nullglob
@@ -137,7 +84,6 @@ jobs:
           fi
 
       - name: 4. Validate Python Scripts (*.py)
-        if: env.IS_DOCS_ONLY != 'true'
         run: |
           echo "=== Kiem tra loi bien dich cu phap Python ==="
           shopt -s nullglob
@@ -153,7 +99,6 @@ jobs:
           fi
 
       - name: 5. Validate Shell Scripts (*.sh)
-        if: env.IS_DOCS_ONLY != 'true'
         run: |
           echo "=== Kiem tra cu phap Shell script (Bash) ==="
           shopt -s nullglob
@@ -185,8 +130,4 @@ jobs:
 
       - name: Final Result Status
         run: |
-          if [ "${{ env.IS_DOCS_ONLY }}" = "true" ]; then
-            echo "✅ SUCCESS: Hoan tat Fast-Pass cho thay doi tai lieu hop le. Da quet bao mat an toan!"
-          else
-            echo "✅ SUCCESS: Tat ca cac file ky thuat da PASS 100% (YAML, XML/CONF, RULES, PYTHON, BASH, SECRETS)!"
-          fi
+          echo "✅ SUCCESS: Tat ca cac file ky thuat da PASS 100% (YAML, XML/CONF, RULES, PYTHON, BASH, SECRETS)!"
