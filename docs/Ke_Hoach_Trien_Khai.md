@@ -501,6 +501,7 @@ Tạo Template & Clones        Suricata & Nginx             Active Response, Bot
 
 ---
 
+<a id="runbook-tv1"></a>
 ### 🟢 9.1. QUY TRÌNH DÀNH CHO THÀNH VIÊN 1: SIEM & INTEGRATION LEAD
 * **Phân vùng quản lý:** Máy ảo `Wazuh-SIEM` (`192.168.100.10/24`)
 * **Nhánh Git làm việc:** `feature/wazuh-rules-telegram`
@@ -722,6 +723,7 @@ sudo poweroff
 
 ---
 
+<a id="runbook-tv2"></a>
 ### 🟡 9.2. QUY TRÌNH DÀNH CHO THÀNH VIÊN 2: NETWORK & SENSOR SPECIALIST
 * **Phân vùng quản lý:** Máy ảo `Suricata-Sensor` (Router 2 card: `192.168.100.20` & `10.0.0.1`)
 * **Nhánh Git làm việc:** `feature/suricata-sensor-nat`
@@ -819,6 +821,7 @@ Khởi động lại Suricata: `sudo systemctl restart suricata`.
 
 ---
 
+<a id="runbook-tv3"></a>
 ### 🔴 9.3. QUY TRÌNH DÀNH CHO THÀNH VIÊN 3: TARGET ADMIN & RED TEAM LEAD
 * **Phân vùng quản lý:** Máy ảo `Target-Server` (`10.0.0.10`) & `Attacker-Kali` (`192.168.100.50`)
 * **Nhánh Git làm việc:** `feature/target-hardening-attacks`
