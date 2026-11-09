@@ -12,9 +12,81 @@
 
 ---
 
-## 1. KIẾN TRÚC HỆ THỐNG & DÒNG CHẢY DỮ LIỆU
+## 1. QUY TRÌNH ĐỒNG BỘ GIT & BẮT ĐẦU PHIÊN LÀM VIỆC
 
-### 1.1. Sơ đồ phân vùng kiến trúc mạng (Network Topology)
+Mọi thành viên bắt buộc cập nhật nhánh `main` trước khi thực hiện bất kỳ thao tác kỹ thuật nào:
+
+```bash
+# 1. BẮT BUỘC: Luôn kéo mã nguồn mới nhất từ main trước khi làm việc:
+git switch main && git pull --ff-only origin main
+
+# 2. Đồng bộ cập nhật từ main vào nhánh tính năng cá nhân đang phát triển:
+git stash && git switch main && git pull origin main && git switch <nhanh-cua-ban> && git merge main && git stash pop
+
+# 3. Kéo nhánh Pull Request của đồng đội về máy để kiểm tra chéo (Review PR):
+git fetch origin && git switch --track origin/<ten-nhanh-pr>
+```
+
+---
+
+## 2. NGUYÊN TẮC LÀM VIỆC & PHỐI HỢP TRỢ LÝ AI (AI GOVERNANCE)
+
+* **Quyền quyết định thuộc về con người (Human Approval Gate):** AI chỉ đóng vai trò tư vấn kỹ thuật và rà soát lỗi cú pháp. Nghiêm cấm chạy lệnh `git commit` hoặc `git push` nếu chưa có sự đồng ý trực tiếp của thành viên.
+* **Chính sách không lộ lọt dữ liệu (Zero-Leak Policy):** Tuyệt đối không commit Private Key, Telegram/Discord Token thật, file mật khẩu `wazuh-passwords.txt`, tệp log lớn `eve.json` hoặc ổ đĩa ảo `.vmdk`.
+* **Lưu vết phiên làm việc (Session Persistence):** Sau mỗi phiên làm việc, thành viên yêu cầu AI cập nhật tóm tắt mốc kỹ thuật vào `session_summary.md` trên máy cá nhân để duy trì ngữ cảnh cho các phiên tiếp theo.
+* **Quy chuẩn đối soát QA:** Thực hiện đối soát bắt buộc theo quy tắc [.agent/rules/qa-soc-lab-protocol.md](.agent/rules/qa-soc-lab-protocol.md) trước và sau mỗi tác vụ kỹ thuật.
+
+---
+
+## 3. PHÂN CÔNG TRÁCH NHIỆM 3 THÀNH VIÊN (RACI MATRIX)
+
+| Thành viên | Vai trò đảm nhiệm | Node máy ảo phụ trách | Nhiệm vụ kỹ thuật trọng tâm | Hướng dẫn thi công chi tiết |
+| :---: | :--- | :--- | :--- | :---: |
+| **Thành viên 1** | SIEM & Integration Lead | `Wazuh-SIEM`<br>(`192.168.100.10`) | Cài đặt OVA, gán IP tĩnh, hạ tải JVM Indexer xuống 1GB, thiết lập Whitelist và Active Response `firewall-drop`, viết rule tương quan 100002, tích hợp Webhook Discord/Telegram. | [Xem Runbook TV1](docs/Ke_Hoach_Trien_Khai.md#runbook-tv1) |
+| **Thành viên 2** | Network & Sensor Specialist | `Suricata-Sensor`<br>(`192.168.100.20` & `10.0.0.1`) | Cấu hình Netplan 2 card, bật IP Forwarding và NAT MASQUERADE qua `iptables-persistent`, cài đặt Suricata 7.x, biên soạn `local.rules`, cấu hình Wazuh Agent đọc luồng `eve.json`. | [Xem Runbook TV2](docs/Ke_Hoach_Trien_Khai.md#runbook-tv2) |
+| **Thành viên 3** | Target Admin & Red Team Lead | `Target-Server` (`10.0.0.10`) & `Attacker-Kali` (`192.168.100.50`) | Cấu hình Target Server trỏ Gateway về Sensor, cài Nginx và Agent FIM `/var/www/html/`; cấu hình Static route trên Kali, giải nén từ điển `rockyou.txt`, thực thi 4 kịch bản tấn công. | [Xem Runbook TV3](docs/Ke_Hoach_Trien_Khai.md#runbook-tv3) |
+
+---
+
+## 4. LƯU Ý KỶ LUẬT SNAPSHOT & BẢO TOÀN HIỆN TRƯỜNG MÁY ẢO
+
+* **Chụp Snapshot ở phiên cuối của Task:** Không cần chụp lắt nhắt ở từng lệnh nhỏ. Chỉ chụp Snapshot khi đã hoàn thành trọn vẹn một task nhiệm vụ lớn của thành viên (đã cấu hình xong IP tĩnh, dựng xong dịch vụ, hoặc kết nối thành công Agent về SIEM).
+* **Chụp Snapshot ngay trước khi tắt máy (`sudo poweroff`):** Khi kết thúc phiên làm việc, luôn chụp Snapshot trước khi tắt máy ảo. Không tắt máy ngang hoặc để máy tắt hoàn toàn khi chưa lưu mốc checkpoint.
+* **Bảo toàn hiện trường khi gặp sự cố:** Nếu phát sinh lỗi kết nối mạng, dịch vụ bị treo hoặc cấu hình iptables bị sai, chụp ngay một Snapshot trạng thái lỗi để giữ nguyên hiện trường phục vụ tra cứu log (`journalctl -xe`, `ossec.log`). Không tắt nguồn cưỡng bức (hard reset) để tránh làm hỏng cơ sở dữ liệu Indexer.
+* **Khôi phục nhanh:** Khi cấu hình bị lỗi không khắc phục được, hoàn tác về Snapshot checkpoint gần nhất trong vài giây thay vì phải cài lại máy từ đầu.
+
+---
+
+## 5. QUY HOẠCH HẠ TẦNG & THÔNG SỐ IP TĨNH
+
+### 5.1. Khóa cứng phiên bản phần mềm & Liên kết tải trực tiếp
+> ⛔ **Cảnh báo tính tương thích:**
+> * **Wazuh SIEM:** Bắt buộc dùng bản **4.8.0** hoặc **4.7.5**. Không dùng bản 4.14+ do thay đổi kiến trúc Indexer và lược bỏ script trích xuất mật khẩu.
+> * **Ubuntu Server:** Bắt buộc dùng bản **22.04.5 LTS**. Không dùng bản Ubuntu 24.04 LTS (khai tử cú pháp Netplan `gateway4`, chặn cài Python qua lỗi PEP 668).
+
+| Thành phần | Phiên bản chuẩn | Tên tệp & Liên kết tải chính thức | Hệ điều hành nền tảng |
+| :--- | :---: | :--- | :--- |
+| **Wazuh-SIEM** | **4.8.0** / 4.7.5 | • Bản 4.8: [`wazuh-4.8.0.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.8.0.ova) — [Tài liệu Wazuh 4.8](https://documentation.wazuh.com/4.8/deployment-options/virtual-machine/virtual-machine.html)<br>• Bản 4.7: [`wazuh-4.7.5.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.7.5.ova) — [Tài liệu Wazuh 4.7](https://documentation.wazuh.com/4.7/deployment-options/virtual-machine/virtual-machine.html) | Amazon Linux 2023 minimal |
+| **Sensor & Target** | **22.04.5 LTS** | [`ubuntu-22.04.5-live-server-amd64.iso` (Tải trực tiếp)](https://releases.ubuntu.com/jammy/ubuntu-22.04.5-live-server-amd64.iso) | Ubuntu Server 64-bit |
+| **Attacker-Kali** | **2024.x** | [Kali Linux VMware Pre-built (.7z)](https://www.kali.org/get-kali/#kali-virtual-machines) | Kali Linux (Debian Core) |
+| **Suricata Engine** | **7.0.x Stable** | PPA chính thức: `ppa:oisf/suricata-stable` | Ubuntu Server 64-bit |
+
+### 5.2. Bảng phân bổ thông số mạng 4 Node
+| Node mạng | Vai trò | Card mạng VMware | Địa chỉ IP / Subnet | Default Gateway | Cổng dịch vụ lắng nghe | Thông tin xác thực (Lab Demo Credentials) |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Wazuh-SIEM** | Central SIEM | VMnet8 (NAT) | `192.168.100.10/24` | `192.168.100.2` | TCP 443 (Dashboard), 1514 (Agent Event), 1515 (Enrollment) | `wazuh-user` / `[Mặc định OVA: wazuh]`<br>Web: `admin` / `[Mặc định OVA: admin]` |
+| **Suricata-Sensor** | Router NAT & NIDS/IPS | `ens33`: VMnet8<br>`ens34`: VMnet2 | `192.168.100.20/24`<br>`10.0.0.1/24` | `192.168.100.2`<br>*(ens34 không đặt GW)* | Bắt gói AF-PACKET, Chuyển tiếp NAT MASQUERADE | `ubuntu` / `[Mật khẩu lab: 123]` |
+| **Target-Server** | Máy chủ web đích | `ens33`: VMnet2 (Host-only) | `10.0.0.10/24` | `10.0.0.1` | TCP 80 (Nginx), TCP 22 (SSH), Wazuh Agent Service | `ubuntu` / `[Mật khẩu lab: 123]` |
+| **Attacker-Kali** | Máy tấn công kiểm thử | `eth0`: VMnet8 (NAT) | `192.168.100.50/24` | `192.168.100.2` | Nmap, Hydra, curl<br>Tuyến tĩnh: `10.0.0.0/24 via 192.168.100.20` | `kali` / `kali` *(Mặc định OS)* |
+
+> [!NOTE]
+> **Khuyến nghị an toàn thông tin (NIST SP 800-63B):** Các thông tin đăng nhập trên được thiết lập phục vụ môi trường phòng thí nghiệm cô lập (VMware NAT / Host-Only). Trong môi trường vận hành thực tế (Production), bắt buộc vô hiệu hóa đăng nhập mật khẩu yếu (`PasswordAuthentication no`) và chuyển sang xác thực bằng cặp khóa SSH (SSH Key Pair).
+
+---
+
+## 6. KIẾN TRÚC HỆ THỐNG & DÒNG CHẢY DỮ LIỆU
+
+### 6.1. Sơ đồ phân vùng kiến trúc mạng (Network Topology)
 ```mermaid
 flowchart TD
     subgraph VMN8["Vùng Mạng NAT - VMnet8 (192.168.100.0/24)"]
@@ -42,7 +114,7 @@ flowchart TD
     KALI -.->|"Định tuyến tĩnh qua 192.168.100.20"| SENSOR_NODE
 ```
 
-### 1.2. Sơ đồ dòng chảy dữ liệu sự kiện (Event Data Flow Pipeline)
+### 6.2. Sơ đồ dòng chảy dữ liệu sự kiện (Event Data Flow Pipeline)
 ```mermaid
 sequenceDiagram
     autonumber
@@ -71,72 +143,9 @@ sequenceDiagram
 
 ---
 
-## 2. QUY HOẠCH HẠ TẦNG & THÔNG SỐ IP TĨNH
+## 7. MA TRẬN KIỂM THỬ THỰC NGHIỆM & KẾT QUẢ ĐO LƯỜNG (MITRE ATT&CK)
 
-### 2.1. Khóa cứng phiên bản phần mềm & Liên kết tải trực tiếp
-> ⛔ **Cảnh báo tính tương thích:**
-> * **Wazuh SIEM:** Bắt buộc dùng bản **4.8.0** hoặc **4.7.5**. Không dùng bản 4.14+ do thay đổi kiến trúc Indexer và lược bỏ script trích xuất mật khẩu.
-> * **Ubuntu Server:** Bắt buộc dùng bản **22.04.5 LTS**. Không dùng bản Ubuntu 24.04 LTS (khai tử cú pháp Netplan `gateway4`, chặn cài Python qua lỗi PEP 668).
-
-| Thành phần | Phiên bản chuẩn | Tên tệp & Liên kết tải chính thức | Hệ điều hành nền tảng |
-| :--- | :---: | :--- | :--- |
-| **Wazuh-SIEM** | **4.8.0** / 4.7.5 | • Bản 4.8: [`wazuh-4.8.0.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.8.0.ova) — [Tài liệu Wazuh 4.8](https://documentation.wazuh.com/4.8/deployment-options/virtual-machine/virtual-machine.html)<br>• Bản 4.7: [`wazuh-4.7.5.ova` (Tải trực tiếp)](https://packages.wazuh.com/4.x/vm/wazuh-4.7.5.ova) — [Tài liệu Wazuh 4.7](https://documentation.wazuh.com/4.7/deployment-options/virtual-machine/virtual-machine.html) | Amazon Linux 2023 minimal |
-| **Sensor & Target** | **22.04.5 LTS** | [`ubuntu-22.04.5-live-server-amd64.iso` (Tải trực tiếp)](https://releases.ubuntu.com/jammy/ubuntu-22.04.5-live-server-amd64.iso) | Ubuntu Server 64-bit |
-| **Attacker-Kali** | **2024.x** | [Kali Linux VMware Pre-built (.7z)](https://www.kali.org/get-kali/#kali-virtual-machines) | Kali Linux (Debian Core) |
-| **Suricata Engine** | **7.0.x Stable** | PPA chính thức: `ppa:oisf/suricata-stable` | Ubuntu Server 64-bit |
-
-### 2.2. Bảng phân bổ thông số mạng 4 Node
-| Node mạng | Vai trò | Card mạng VMware | Địa chỉ IP / Subnet | Default Gateway | Cổng dịch vụ lắng nghe | Thông tin xác thực (Lab Demo Credentials) |
-| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Wazuh-SIEM** | Central SIEM | VMnet8 (NAT) | `192.168.100.10/24` | `192.168.100.2` | TCP 443 (Dashboard), 1514 (Agent Event), 1515 (Enrollment) | `wazuh-user` / `[Mặc định OVA: wazuh]`<br>Web: `admin` / `[Mặc định OVA: admin]` |
-| **Suricata-Sensor** | Router NAT & NIDS/IPS | `ens33`: VMnet8<br>`ens34`: VMnet2 | `192.168.100.20/24`<br>`10.0.0.1/24` | `192.168.100.2`<br>*(ens34 không đặt GW)* | Bắt gói AF-PACKET, Chuyển tiếp NAT MASQUERADE | `ubuntu` / `[Mật khẩu lab: 123]` |
-| **Target-Server** | Máy chủ web đích | `ens33`: VMnet2 (Host-only) | `10.0.0.10/24` | `10.0.0.1` | TCP 80 (Nginx), TCP 22 (SSH), Wazuh Agent Service | `ubuntu` / `[Mật khẩu lab: 123]` |
-| **Attacker-Kali** | Máy tấn công kiểm thử | `eth0`: VMnet8 (NAT) | `192.168.100.50/24` | `192.168.100.2` | Nmap, Hydra, curl<br>Tuyến tĩnh: `10.0.0.0/24 via 192.168.100.20` | `kali` / `kali` *(Mặc định OS)* |
-
-> [!NOTE]
-> **Khuyến nghị an toàn thông tin (NIST SP 800-63B):** Các thông tin đăng nhập trên được thiết lập phục vụ môi trường phòng thí nghiệm cô lập (VMware NAT / Host-Only). Trong môi trường vận hành thực tế (Production), bắt buộc vô hiệu hóa đăng nhập mật khẩu yếu (`PasswordAuthentication no`) và chuyển sang xác thực bằng cặp khóa SSH (SSH Key Pair).
-
----
-
-## 3. PHÂN CÔNG TRÁCH NHIỆM 3 THÀNH VIÊN (RACI MATRIX)
-
-| Thành viên | Vai trò đảm nhiệm | Node máy ảo phụ trách | Nhiệm vụ kỹ thuật trọng tâm | Hướng dẫn thi công chi tiết |
-| :---: | :--- | :--- | :--- | :---: |
-| **Thành viên 1** | SIEM & Integration Lead | `Wazuh-SIEM`<br>(`192.168.100.10`) | Cài đặt OVA, gán IP tĩnh, hạ tải JVM Indexer xuống 1GB, thiết lập Whitelist và Active Response `firewall-drop`, viết rule tương quan 100002, tích hợp Webhook Discord/Telegram. | [Xem Runbook TV1](docs/Ke_Hoach_Trien_Khai.md#runbook-tv1) |
-| **Thành viên 2** | Network & Sensor Specialist | `Suricata-Sensor`<br>(`192.168.100.20` & `10.0.0.1`) | Cấu hình Netplan 2 card, bật IP Forwarding và NAT MASQUERADE qua `iptables-persistent`, cài đặt Suricata 7.x, biên soạn `local.rules`, cấu hình Wazuh Agent đọc luồng `eve.json`. | [Xem Runbook TV2](docs/Ke_Hoach_Trien_Khai.md#runbook-tv2) |
-| **Thành viên 3** | Target Admin & Red Team Lead | `Target-Server` (`10.0.0.10`) & `Attacker-Kali` (`192.168.100.50`) | Cấu hình Target Server trỏ Gateway về Sensor, cài Nginx và Agent FIM `/var/www/html/`; cấu hình Static route trên Kali, giải nén từ điển `rockyou.txt`, thực thi 4 kịch bản tấn công. | [Xem Runbook TV3](docs/Ke_Hoach_Trien_Khai.md#runbook-tv3) |
-
----
-
-## 4. QUY TRÌNH PHỐI HỢP GIT & TRỢ LÝ AI (COLLABORATION RUNBOOK)
-
-### 4.1. Ba quy trình Git hàng ngày cho cả nhóm
-```bash
-# 1. Cập nhật nhánh main trước khi bắt đầu phiên làm việc:
-git switch main && git pull --ff-only origin main
-
-# 2. Đồng bộ cập nhật từ main vào nhánh tính năng cá nhân đang làm dở:
-git stash && git switch main && git pull origin main && git switch <nhanh-cua-ban> && git merge main && git stash pop
-
-# 3. Kéo nhánh Pull Request của đồng đội về kiểm tra chéo (Review PR):
-git fetch origin && git switch --track origin/<ten-nhanh-pr>
-```
-
-### 4.2. Nguyên tắc phối hợp với Trợ lý AI (AI Governance)
-* **Quyền quyết định thuộc về con người (Human Approval Gate):** AI chỉ đóng vai trò tư vấn kỹ thuật và rà soát lỗi cú pháp. Nghiêm cấm chạy lệnh `git commit` hoặc `git push` nếu chưa có sự đồng ý trực tiếp của thành viên.
-* **Chính sách không lộ lọt dữ liệu (Zero-Leak Policy):** Tuyệt đối không commit Private Key, Telegram/Discord Token thật, file mật khẩu `wazuh-passwords.txt`, tệp log lớn `eve.json` hoặc ổ đĩa ảo `.vmdk`.
-* **Lưu vết phiên làm việc (Session Persistence):** Sau mỗi phiên làm việc, thành viên yêu cầu AI cập nhật tóm tắt mốc kỹ thuật vào `session_summary.md` trên máy cá nhân để duy trì ngữ cảnh cho các phiên tiếp theo.
-* **Quy chuẩn đối soát QA:** Thực hiện đối soát bắt buộc theo quy tắc [.agent/rules/qa-soc-lab-protocol.md](.agent/rules/qa-soc-lab-protocol.md) trước và sau mỗi tác vụ kỹ thuật.
-
-### 4.3. Kỷ luật chụp Snapshot máy ảo (VMware Snapshot Discipline)
-* **Chụp Live Snapshot theo từng mốc (Checkpoint):** Khi hoàn thành mỗi bước cấu hình (gán IP, cấu hình iptables, kết nối Agent), chụp ngay Snapshot khi máy ảo đang chạy (*Snapshot the virtual machine's memory*). Không tắt máy hoàn toàn giữa các task để tránh mất thời gian khởi động lại Indexer/Suricata (thường mất 2-3 phút) và duy trì liên tục phiên làm việc SSH.
-* **Bảo toàn hiện trường khi gặp sự cố:** Khi phát sinh lỗi kết nối hoặc dịch vụ, không tắt nguồn cưỡng bức (hard power-off) để tránh làm hỏng cơ sở dữ liệu Indexer hoặc mất log trong bộ nhớ đệm. Giữ nguyên máy ảo để kiểm tra log (`journalctl -xe`, `ossec.log`), hoặc hoàn tác về Snapshot checkpoint gần nhất chỉ trong vài giây.
-
----
-
-## 5. MA TRẬN KIỂM THỬ THỰC NGHIỆM & KẾT QUẢ ĐO LƯỜNG (MITRE ATT&CK)
-
-### 5.1. Bảng 4 kịch bản kiểm thử tấn công - phòng thủ
+### 7.1. Bảng 4 kịch bản kiểm thử tấn công - phòng thủ
 | Mã | Kịch bản tấn công | Lệnh thực thi từ Kali | Khung MITRE ATT&CK | Cơ chế phát hiện | Cơ chế phản ứng (Active Response) | Bằng chứng nghiệm thu |
 | :---: | :--- | :--- | :---: | :--- | :--- | :--- |
 | **TC-01** | Quét cổng mạng do thám | `nmap -sS -p 22,80 10.0.0.10` | **T1046** (Network Service Discovery)<br>**T1595** (Active Scanning) | Suricata bắt signature Nmap trong `eve.json` | Wazuh SIEM nhận log, sinh Alert Level 6 | Dashboard ghi nhận sự kiện; IP chưa bị chặn |
@@ -144,7 +153,7 @@ git fetch origin && git switch --track origin/<ten-nhanh-pr>
 | **TC-03** | Khai thác Web SQL Injection | `curl -G "http://10.0.0.10/" --data-urlencode "id=1' UNION SELECT..."` | **T1190** (Exploit Public-Facing Application) | Suricata bắt signature SQLi chuỗi `UNION` | Kích hoạt cảnh báo Critical (Level 10+) | Suricata ghi alert; Webhook gửi cảnh báo màu đỏ tức thời |
 | **TC-04** | Tải WebShell & Giám sát FIM | `echo "<?php system(\$_GET['cmd']); ?>" > /var/www/html/shell.php` | **T1505.003** (Server Component: Web Shell) | Wazuh FIM (`syscheck`) dùng `inotify` quét real-time `/var/www/html/` | Kích hoạt Rule 554 (File added) và Rule 550 (Checksum changed) | Dashboard hiển thị file bị thêm/sửa, diff nội dung tệp; Webhook báo động |
 
-### 5.2. Chỉ số đo lường hiệu năng thực nghiệm (KPIs & Metrics)
+### 7.2. Chỉ số đo lường hiệu năng thực nghiệm (KPIs & Metrics)
 | Chỉ số đo lường (Metric) | Tiêu chuẩn cam kết (SLA) | Kết quả thực nghiệm lab | Đánh giá |
 | :--- | :---: | :---: | :---: |
 | **Thời gian phát hiện gói tin độc hại (Detection Latency)** | $< 2.0$ giây | **$\approx 0.8$ giây** | Đạt chuẩn |
@@ -155,9 +164,9 @@ git fetch origin && git switch --track origin/<ten-nhanh-pr>
 
 ---
 
-## 6. LỆNH VẬN HÀNH NHANH & CỨU HỘ KHẨN CẤP (QUICK CLI)
+## 8. LỆNH VẬN HÀNH NHANH & CỨU HỘ KHẨN CẤP (QUICK CLI)
 
-### 6.1. Bảng lệnh SSH từ PowerShell máy thật Windows vào 4 máy ảo
+### 8.1. Bảng lệnh SSH từ PowerShell máy thật Windows vào 4 máy ảo
 Thay vì gõ lệnh trên màn hình console VMware, mở PowerShell trên Windows và kết nối trực tiếp:
 | Máy ảo | Địa chỉ IP | Lệnh SSH từ PowerShell máy thật | Mật khẩu mẫu phòng lab |
 | :--- | :--- | :--- | :--- |
@@ -168,7 +177,7 @@ Thay vì gõ lệnh trên màn hình console VMware, mở PowerShell trên Windo
 
 *(Lưu ý cho Target: Mở PowerShell Admin trên máy thật gõ lệnh định tuyến một lần: `route add 10.0.0.0 mask 255.255.255.0 192.168.100.20` để máy thật kết nối thẳng vào Target qua Sensor).*
 
-### 6.2. Bộ lệnh kiểm tra nhanh & Cứu hộ khẩn cấp
+### 8.2. Bộ lệnh kiểm tra nhanh & Cứu hộ khẩn cấp
 ```bash
 # 1. Kiểm tra trạng thái dịch vụ trung tâm trên Wazuh SIEM:
 sudo systemctl status wazuh-manager wazuh-indexer wazuh-dashboard
@@ -188,7 +197,7 @@ sudo iptables -F
 
 ---
 
-## 7. SƠ ĐỒ TÀI LIỆU DỰ ÁN (DOCUMENTATION SITEMAP)
+## 9. SƠ ĐỒ TÀI LIỆU DỰ ÁN (DOCUMENTATION SITEMAP)
 
 | Tệp tin / Thư mục | Định vị chức năng trong dự án |
 | :--- | :--- |

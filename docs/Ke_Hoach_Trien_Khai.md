@@ -503,15 +503,16 @@ Tạo Template & Clones        Suricata & Nginx             Active Response, Bot
 
 ### 9.0. Quy tắc chụp Snapshot bảo toàn hiện trường và phục hồi tức thời (Snapshot Discipline)
 Trước khi từng thành viên bắt tay vào thực hiện chuỗi lệnh của mình, toàn đội tuân thủ 3 nguyên tắc Snapshot trên VMware Workstation:
-1. **Chụp Live Snapshot theo từng mốc (Checkpoint có lưu RAM):**
-   * Sau mỗi mốc cấu hình thành công (gán xong IP tĩnh, cấu hình xong định tuyến NAT, cài xong Suricata/Nginx, ghép nối xong Wazuh Agent về Manager), vào menu **VM $\rightarrow$ Snapshot $\rightarrow$ Take Snapshot...** (tích chọn *Snapshot the virtual machine's memory*).
-   * Không tắt máy hoàn toàn giữa các task. Việc tắt máy rồi bật lại làm mất từ 1-3 phút để Wazuh Indexer và Dashboard khởi tạo lại, đồng thời làm mất phiên làm việc SSH.
-2. **Bảo toàn hiện trường khi gặp sự cố (Troubleshooting) - Tuyệt đối không tắt nguồn cưỡng bức:**
-   * Khi gặp lỗi phân giải tên miền, mất mạng do cấu hình sai iptables/Netplan hoặc Agent báo Disconnected, không nhấn nút tắt nguồn cưỡng bức (Power Off / Reset) trên VMware để tránh hỏng dữ liệu Indexer và mất log trong bộ nhớ đệm.
-   * Giữ nguyên máy ảo đang chạy để đọc log trực tiếp (`journalctl -xe`, `tail -f /var/ossec/logs/ossec.log`, `dmesg`).
-   * Nếu cấu hình bị sai lệch không thể khắc phục, sử dụng tính năng **Revert to Snapshot** về mốc ổn định gần nhất để khôi phục trong vài giây mà không phải cài lại máy từ đầu.
+1. **Chụp Snapshot ở phiên cuối của Task (Mốc hoàn thành trọn vẹn):**
+   * Không chụp lắt nhắt ở từng câu lệnh hay bước con. Chỉ chụp Snapshot khi đã hoàn thành trọn vẹn một task lớn (ví dụ: Thành viên 1 hoàn tất toàn bộ cấu hình Wazuh SIEM, Thành viên 2 xong cụm Router Suricata, Thành viên 3 xong Target và kịch bản tấn công).
+   * Vào menu **VM $\rightarrow$ Snapshot $\rightarrow$ Take Snapshot...** (tích chọn *Snapshot the virtual machine's memory*).
+   * **Chụp Snapshot trước khi tắt máy (`sudo poweroff`):** Khi kết thúc phiên làm việc của task, chụp Snapshot xong rồi mới thực hiện tắt máy. Tuyệt đối không tắt máy ngang hoặc để máy tắt hoàn toàn khi chưa lưu checkpoint.
+2. **Bảo toàn hiện trường khi gặp sự cố (Troubleshooting):**
+   * Khi gặp lỗi mạng, dịch vụ bị treo hoặc Agent báo Disconnected, chụp ngay một Snapshot trạng thái lỗi để giữ nguyên hiện trường trước khi thử nghiệm phương án sửa lỗi.
+   * Tuyệt đối không tắt nguồn cưỡng bức (Power Off / Reset) trên VMware để tránh hỏng dữ liệu Indexer và mất log trong bộ nhớ đệm.
+   * Giữ nguyên máy ảo đang chạy để đọc log trực tiếp (`journalctl -xe`, `tail -f /var/ossec/logs/ossec.log`, `dmesg`). Nếu việc sửa lỗi thất bại, sử dụng tính năng **Revert to Snapshot** về mốc ổn định gần nhất trong vài giây.
 3. **Thời điểm tắt máy để chụp Snapshot Offline:**
-   * Chỉ khi toàn bộ 3 thành viên hoàn thành và nghiệm thu xong Sprint 4 (chốt hạ bài lab), thực hiện `sudo poweroff` để tắt toàn bộ 4 máy ảo. Lúc này mới chụp bản snapshot cuối cùng mang tên `Final_Demo_Ready` nhằm giải phóng file RAM `.vmem` và tiết kiệm dung lượng ổ cứng cho máy vật lý.
+   * Sau khi cả 3 thành viên hoàn thành và nghiệm thu xong Sprint 4 (chốt hạ bài lab), thực hiện `sudo poweroff` tắt sạch 4 máy ảo rồi chụp bản snapshot cuối cùng mang tên `Final_Demo_Ready` nhằm giải phóng file RAM `.vmem` và tiết kiệm dung lượng ổ cứng cho máy vật lý.
 
 ---
 
