@@ -88,57 +88,61 @@ git fetch origin && git switch --track origin/<ten-nhanh-pr>
 
 ### 6.1. Sơ đồ phân vùng kiến trúc mạng (Network Topology)
 ```mermaid
-flowchart TD
-    subgraph VMN8["Vùng Mạng NAT - VMnet8 (192.168.100.0/24)"]
+flowchart LR
+    subgraph WAN["VÙNG MẠNG NAT (VMnet8: 192.168.100.0/24)"]
         direction TB
-        SIEM["Wazuh SIEM Server\nIP: 192.168.100.10\n(Manager + Dashboard + Indexer)"]
-        KALI["Attacker Kali Linux\nIP: 192.168.100.50\n(Red Team / Penetration Testing)"]
-        GW["VMware NAT Gateway\nIP: 192.168.100.2"]
+        KALI["🔴 Attacker Kali Linux<br/><b>192.168.100.50</b><br/><i>(Máy tấn công kiểm thử)</i>"]
+        SIEM["🔵 Wazuh Central SIEM<br/><b>192.168.100.10</b><br/><i>(Manager + Indexer + Dashboard)</i>"]
     end
 
-    subgraph SENSOR_NODE["Biên Cảm biến & Định tuyến"]
+    subgraph GATEWAY["BIÊN CẢM BIẾN & ĐỊNH TUYẾN"]
         direction TB
-        NIC1["Card Ngoài: ens33\nIP: 192.168.100.20"]
-        ROUTER["Suricata Engine & Linux Router\n(AF-PACKET + iptables NAT MASQUERADE)"]
-        NIC2["Card Trong: ens34\nIP: 10.0.0.1"]
-        NIC1 --- ROUTER --- NIC2
+        SENSOR["🟡 Suricata Sensor & Router<br/><b>ens33:</b> 192.168.100.20 <i>(Card ngoài)</i><br/><b>ens34:</b> 10.0.0.1 <i>(Card trong / Gateway)</i><br/><i>(AF-PACKET + NAT MASQUERADE)</i>"]
     end
 
-    subgraph VMN2["Vùng Mạng Nội Bộ - VMnet2 (10.0.0.0/24)"]
+    subgraph LAN["VÙNG NỘI BỘ (VMnet2: 10.0.0.0/24)"]
         direction TB
-        TARGET["Target Web Server\nIP: 10.0.0.10\nGW: 10.0.0.1\n(Nginx + Wazuh Agent + FIM)"]
+        TARGET["🟢 Target Web Server<br/><b>10.0.0.10</b><br/><i>Default Gateway: 10.0.0.1</i><br/><i>(Nginx + Wazuh Agent + FIM)</i>"]
     end
 
-    VMN8 <==> NIC1
-    NIC2 <==> VMN2
-    KALI -.->|"Định tuyến tĩnh qua 192.168.100.20"| SENSOR_NODE
+    %% Luồng lưu lượng mạng và tấn công
+    KALI -->|"1. Lưu lượng tấn công (SSH/Web/Scan)"| SENSOR
+    SENSOR -->|"2. Chuyển tiếp NAT MASQUERADE"| TARGET
+
+    %% Luồng telemetry đẩy log về SIEM
+    SENSOR -.->|"3. Cảnh báo mạng eve.json (TLS 1514)"| SIEM
+    TARGET -.->|"4. Log máy chủ & FIM (TLS 1514)"| SIEM
+
+    %% Luồng phản ứng Active Response
+    SIEM ==>|"5. Active Response (Khóa IP 192.168.100.50)"| TARGET
 ```
 
 ### 6.2. Sơ đồ dòng chảy dữ liệu sự kiện (Event Data Flow Pipeline)
 ```mermaid
 sequenceDiagram
     autonumber
-    participant K as Attacker (Kali)
-    participant S as Sensor (Suricata IDS)
-    participant T as Target Server (Agent)
-    participant M as Wazuh SIEM Manager
-    participant D as Discord / Telegram Webhook
+    actor Kali as 🔴 Kẻ tấn công (Kali)
+    participant Sensor as 🟡 Cảm biến (Suricata)
+    participant Target as 🟢 Máy đích (Target Server)
+    participant SIEM as 🔵 Trung tâm (Wazuh SIEM)
+    participant Alert as 🟣 Cảnh báo (Telegram/Discord)
 
-    K->>S: Gửi gói tin tấn công (Hydra SSH, SQLi, Ping of Death)
-    Note over S: Bắt gói AF-PACKET qua ens33/ens34<br/>So khớp Signature cục bộ & ET-Open
-    S->>S: Ghi log cảnh báo vào /var/log/suricata/eve.json
-    S->>M: Wazuh Agent đẩy log eve.json qua TCP/1514 (TLS)
-    
-    K->>T: Gói tin chuyển tiếp qua NAT MASQUERADE chạm Target
-    T->>T: Ghi nhận log xác thực auth.log và Nginx access.log
-    T->>M: Wazuh Agent đẩy log hệ thống qua TCP/1514 (TLS)
-    
-    Note over M: Giải mã JSON (Decoders)<br/>Khớp luật tương quan (Rule ID: 100002)
-    M->>T: Phát lệnh Active Response (firewall-drop 600s)
-    Note over T: iptables thực thi DROP IP kẻ tấn công
-    
-    M->>D: Gọi custom-discord.py gửi cảnh báo vi phạm
-    M->>M: Lưu trữ sự kiện vào Indexer & hiển thị Dashboard
+    Note over Kali,Sensor: GIAI ĐOẠN 1: PHÁT HIỆN TẤN CÔNG QUA MẠNG
+    Kali->>Sensor: Gửi gói tin tấn công (Nmap, Hydra SSH, SQLi)
+    Sensor->>Sensor: AF-PACKET bắt gói, khớp Signature ET-Open
+    Sensor->>SIEM: Đẩy log cảnh báo mạng (eve.json) qua TLS/1514
+
+    Note over Sensor,Target: GIAI ĐOẠN 2: CHUYỂN TIẾP & GIÁM SÁT MÁY CHỦ
+    Sensor->>Target: Chuyển tiếp gói tin qua NAT MASQUERADE
+    Target->>Target: Ghi nhận auth.log thất bại / FIM phát hiện sửa đổi file
+    Target->>SIEM: Đẩy log sự kiện hệ thống qua TLS/1514
+
+    Note over SIEM,Alert: GIAI ĐOẠN 3: TƯƠNG QUAN & PHẢN ỨNG TỰ ĐỘNG
+    SIEM->>SIEM: Tương quan đa nguồn, kích hoạt Rule 100002
+    SIEM->>Target: Gửi lệnh Active Response (firewall-drop 600s)
+    Target->>Target: iptables thêm dòng DROP IP kẻ tấn công (192.168.100.50)
+    SIEM->>Alert: Gửi thông báo khẩn cấp kèm phân loại MITRE ATT&CK
+    SIEM->>SIEM: Lưu trữ Indexer và trực quan hóa lên Dashboard
 ```
 
 ---
