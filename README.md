@@ -52,12 +52,12 @@ git fetch origin && git switch --track origin/<ten-nhanh-pr>
 
 ### 4.1. Bảng lệnh SSH từ PowerShell máy thật Windows vào 4 máy ảo
 Thay vì gõ lệnh trên màn hình console VMware, mở PowerShell trên Windows và kết nối trực tiếp:
-| Máy ảo | Địa chỉ IP | Lệnh SSH từ PowerShell máy thật | Mật khẩu mẫu phòng lab |
+| Máy ảo | Địa chỉ IP | Lệnh SSH từ PowerShell máy thật | Tài khoản xác thực |
 | :--- | :--- | :--- | :--- |
-| **Wazuh-SIEM** | `192.168.100.10` | `ssh wazuh-user@192.168.100.10` | `wazuh` *(Mặc định OVA)* |
-| **Suricata-Sensor** | `192.168.100.20` | `ssh ubuntu@192.168.100.20` | `123` *(Mật khẩu lab nội bộ)* |
-| **Target-Server** | `10.0.0.10` | `ssh ubuntu@10.0.0.10` *(chạy lệnh route Windows bên dưới)* | `123` *(Mật khẩu lab nội bộ)* |
-| **Attacker-Kali** | `192.168.100.50` | `ssh kali@192.168.100.50` | `kali` *(Mặc định Kali Linux)* |
+| **Wazuh-SIEM** | `192.168.100.10` | `ssh wazuh-user@192.168.100.10` | `wazuh-user` (Mật khẩu tự đặt khi cài đặt) |
+| **Suricata-Sensor** | `192.168.100.20` | `ssh ubuntu@192.168.100.20` | `ubuntu` (Mật khẩu tự đặt khi cài đặt) |
+| **Target-Server** | `10.0.0.10` | `ssh ubuntu@10.0.0.10` *(chạy lệnh route Windows bên dưới)* | `ubuntu` (Mật khẩu tự đặt khi cài đặt) |
+| **Attacker-Kali** | `192.168.100.50` | `ssh kali@192.168.100.50` | `kali` (Mật khẩu tự đặt khi cài đặt) |
 
 *(Lưu ý cho Target: Mở PowerShell Admin trên máy thật gõ lệnh định tuyến một lần: `route add 10.0.0.0 mask 255.255.255.0 192.168.100.20` để máy thật kết nối thẳng vào Target qua Sensor).*
 
@@ -126,15 +126,15 @@ sudo iptables -F
 | **Suricata Engine** | **7.0.x Stable** | PPA chính thức: `ppa:oisf/suricata-stable` | Ubuntu Server 64-bit |
 
 ### 7.2. Bảng phân bổ thông số mạng 4 Node
-| Node mạng | Vai trò | Card mạng VMware | Địa chỉ IP / Subnet | Default Gateway | Cổng dịch vụ lắng nghe | Thông tin xác thực (Lab Demo Credentials) |
+| Node mạng | Vai trò | Card mạng VMware | Địa chỉ IP / Subnet | Default Gateway | Cổng dịch vụ lắng nghe | Tài khoản quản trị hệ thống |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Wazuh-SIEM** | Central SIEM | VMnet8 (NAT) | `192.168.100.10/24` | `192.168.100.2` | TCP 443 (Dashboard), 1514 (Agent Event), 1515 (Enrollment) | `wazuh-user` / `[Mặc định OVA: wazuh]`<br>Web: `admin` / `[Mặc định OVA: admin]` |
-| **Suricata-Sensor** | Router NAT & NIDS/IPS | `ens33`: VMnet8<br>`ens34`: VMnet2 | `192.168.100.20/24`<br>`10.0.0.1/24` | `192.168.100.2`<br>*(ens34 không đặt GW)* | Bắt gói AF-PACKET, Chuyển tiếp NAT MASQUERADE | `ubuntu` / `[Mật khẩu lab: 123]` |
-| **Target-Server** | Máy chủ web đích | `ens33`: VMnet2 (Host-only) | `10.0.0.10/24` | `10.0.0.1` | TCP 80 (Nginx), TCP 22 (SSH), Wazuh Agent Service | `ubuntu` / `[Mật khẩu lab: 123]` |
-| **Attacker-Kali** | Máy tấn công kiểm thử | `eth0`: VMnet8 (NAT) | `192.168.100.50/24` | `192.168.100.2` | Nmap, Hydra, curl<br>Tuyến tĩnh: `10.0.0.0/24 via 192.168.100.20` | `kali` / `kali` *(Mặc định OS)* |
+| **Wazuh-SIEM** | Central SIEM | VMnet8 (NAT) | `192.168.100.10/24` | `192.168.100.2` | TCP 443 (Dashboard), 1514 (Agent Event), 1515 (Enrollment) | CLI: `wazuh-user`<br>Web: `admin` |
+| **Suricata-Sensor** | Router NAT & NIDS/IPS | `ens33`: VMnet8<br>`ens34`: VMnet2 | `192.168.100.20/24`<br>`10.0.0.1/24` | `192.168.100.2`<br>*(ens34 không đặt GW)* | Bắt gói AF-PACKET, Chuyển tiếp NAT MASQUERADE | CLI: `ubuntu` (Sudoer) |
+| **Target-Server** | Máy chủ web đích | `ens33`: VMnet2 (Host-only) | `10.0.0.10/24` | `10.0.0.1` | TCP 80 (Nginx), TCP 22 (SSH), Wazuh Agent Service | CLI: `ubuntu` (Sudoer) |
+| **Attacker-Kali** | Máy tấn công kiểm thử | `eth0`: VMnet8 (NAT) | `192.168.100.50/24` | `192.168.100.2` | Nmap, Hydra, curl<br>Tuyến tĩnh: `10.0.0.0/24 via 192.168.100.20` | CLI: `kali` (Sudoer) |
 
-> [!NOTE]
-> **Khuyến nghị an toàn thông tin (NIST SP 800-63B):** Các thông tin đăng nhập trên được thiết lập phục vụ môi trường phòng thí nghiệm cô lập (VMware NAT / Host-Only). Trong môi trường vận hành thực tế (Production), bắt buộc vô hiệu hóa đăng nhập mật khẩu yếu (`PasswordAuthentication no`) và chuyển sang xác thực bằng cặp khóa SSH (SSH Key Pair).
+> [!IMPORTANT]
+> **Chính sách bảo mật thông tin xác thực (Zero Credential Leak):** Nhằm tuân thủ các tiêu chuẩn an toàn thông tin và khuyến nghị NIST SP 800-63B, tài liệu không lưu trữ mật khẩu tĩnh ở dạng văn bản rõ (plaintext). Người vận hành tự khởi tạo mật khẩu bảo mật riêng trong quá trình cài đặt từng máy ảo hoặc sử dụng cơ chế xác thực bằng cặp khóa SSH (SSH Key Pair).
 
 ---
 

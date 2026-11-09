@@ -86,10 +86,10 @@ Mọi thành viên bắt buộc tuân thủ đúng bảng thông số này để
 
 | Node mạng | Vai trò | Card mạng VMware | IP gán tĩnh | Tài khoản hệ thống | Cấu hình & Dịch vụ |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Wazuh-SIEM** | Central SIEM | VMnet8 (NAT) | `192.168.100.10/24`<br>GW: `192.168.100.2` | `wazuh-user` / `wazuh`<br>Web: `admin` / *(file pass)* | Web HTTPS: 443<br>Agent port: 1514, 1515<br>RAM: 4GB, CPU: 2 Cores |
-| **Suricata-Sensor** | Gateway & IDS/IPS | Card 1: VMnet8<br>Card 2: VMnet2 | `ens33`: `192.168.100.20/24`<br>`ens34`: `10.0.0.1/24` | `ubuntu` / `123` | Suricata Engine, IP Forwarding, NAT MASQUERADE<br>RAM: 2GB, CPU: 2 Cores |
-| **Target-Server** | Web/DB mục tiêu | VMnet2 (Internal LAN) | `ens33`: `10.0.0.10/24`<br>GW: `10.0.0.1` | `ubuntu` / `123` | Nginx HTTP: 80, SSH: 22, Wazuh Agent<br>RAM: 2GB, CPU: 1 Core |
-| **Attacker-Kali** | Red Team giả lập | VMnet8 (External NAT) | `eth0`: `192.168.100.50/24`<br>GW: `192.168.100.2` | `kali` / `kali` | Nmap, Hydra, SQLMap, Route tĩnh đến `10.0.0.0/24`<br>RAM: 2GB, CPU: 1 Core |
+| **Wazuh-SIEM** | Central SIEM | VMnet8 (NAT) | `192.168.100.10/24`<br>GW: `192.168.100.2` | CLI: `wazuh-user`<br>Web: `admin` | Web HTTPS: 443<br>Agent port: 1514, 1515<br>RAM: 4GB, CPU: 2 Cores |
+| **Suricata-Sensor** | Gateway & IDS/IPS | Card 1: VMnet8<br>Card 2: VMnet2 | `ens33`: `192.168.100.20/24`<br>`ens34`: `10.0.0.1/24` | CLI: `ubuntu` | Suricata Engine, IP Forwarding, NAT MASQUERADE<br>RAM: 2GB, CPU: 2 Cores |
+| **Target-Server** | Web/DB mục tiêu | VMnet2 (Internal LAN) | `ens33`: `10.0.0.10/24`<br>GW: `10.0.0.1` | CLI: `ubuntu` | Nginx HTTP: 80, SSH: 22, Wazuh Agent<br>RAM: 2GB, CPU: 1 Core |
+| **Attacker-Kali** | Red Team giả lập | VMnet8 (External NAT) | `eth0`: `192.168.100.50/24`<br>GW: `192.168.100.2` | CLI: `kali` | Nmap, Hydra, SQLMap, Route tĩnh đến `10.0.0.0/24`<br>RAM: 2GB, CPU: 1 Core |
 
 ---
 
@@ -121,7 +121,7 @@ Mọi thành viên bắt buộc tuân thủ đúng bảng thông số này để
    * Mục **Memory**: Đặt **4096 MB (4 GB)**.
    * Mục **Processors**: Đặt **2 cores**.
    * Mục **Network Adapter**: Chọn **Custom** $\rightarrow$ Chọn **VMnet8 (NAT)** $\rightarrow$ Nhấn **OK**.
-5. Bật máy, đăng nhập `wazuh-user` / `wazuh`.
+5. Bật máy, đăng nhập tài khoản `wazuh-user`.
 
 ### Bước 4.3: Cài đặt máy mẫu Ubuntu Base Template (Từ file .ISO)
 1. Chọn **File** $\rightarrow$ **New Virtual Machine...** $\rightarrow$ Chọn **Typical** $\rightarrow$ **Next**.
@@ -130,7 +130,7 @@ Mọi thành viên bắt buộc tuân thủ đúng bảng thông số này để
 4. Đĩa cứng: Đặt **20.0 GB**, chọn **Split virtual disk into multiple files** (Tuyệt đối **không tích** ô *Allocate all disk space now*) $\rightarrow$ **Finish**.
 5. Bật máy, tiến hành cài đặt Ubuntu:
    * Chọn ngôn ngữ English, giữ nguyên các tùy chọn mặc định của bộ cài.
-   * Tạo tài khoản: User `ubuntu` / Password `123`.
+   * Tạo tài khoản quản trị: User `ubuntu` (thiết lập mật khẩu bảo mật cá nhân).
    * Bỏ qua các snap package, chọn **Reboot Now** khi cài xong.
 6. Sau khi máy khởi động lại vào terminal, cài sẵn các gói công cụ cốt lõi:
    ```bash
@@ -167,7 +167,7 @@ Mọi thành viên bắt buộc tuân thủ đúng bảng thông số này để
    * **Memory:** Đặt **2048 MB (2 GB)**.
    * **Network Adapter:** Chuyển sang **Custom** $\rightarrow$ Chọn **VMnet8 (NAT)** $\rightarrow$ **OK**.
 4. Bật máy Kali. Khi VMware hỏi *"This virtual machine might have been moved or copied"*, **bắt buộc chọn "I Copied It"** (để VMware tạo địa chỉ MAC mới, không trùng lặp mạng).
-5. Đăng nhập với tài khoản: `kali` / `kali`.
+5. Đăng nhập với tài khoản: `kali` (sử dụng mật khẩu mặc định của bản phân phối hoặc mật khẩu đã đổi).
 
 ### Bước 4.6: Tối ưu bộ nhớ VMware Preferences (Tránh treo máy thật)
 1. Trên VMware: Chọn **Edit** $\rightarrow$ **Preferences...**
@@ -182,12 +182,12 @@ Mọi thành viên bắt buộc tuân thủ đúng bảng thông số này để
 Các máy chủ Linux Server (Wazuh, Ubuntu Server) chỉ chạy giao diện dòng lệnh (CLI - không có môi trường đồ họa X11), nên console ảo của VMware sẽ không thể bắt clipboard từ Windows một cách mượt mà.  
 **Cách làm chuyên nghiệp:** Sau khi gán IP ở bước đầu tiên, hãy thu nhỏ VMware lại và mở **PowerShell / Windows Terminal** trên máy thật để SSH:
 
-| Máy ảo mục tiêu | Địa chỉ IP | Lệnh SSH từ PowerShell máy thật | Tài khoản / Mật khẩu |
+| Máy ảo mục tiêu | Địa chỉ IP | Lệnh SSH từ PowerShell máy thật | Tài khoản xác thực |
 | :--- | :--- | :--- | :--- |
-| **Wazuh-SIEM** | `192.168.100.10` | `ssh wazuh-user@192.168.100.10` | `wazuh-user` / `wazuh` |
-| **Suricata-Sensor** | `192.168.100.20` | `ssh ubuntu@192.168.100.20` | `ubuntu` / `123` |
-| **Target-Server** | `10.0.0.10` | `ssh ubuntu@10.0.0.10` *(xem lệnh thêm route bên dưới)* | `ubuntu` / `123` |
-| **Attacker-Kali** | `192.168.100.50` | `ssh kali@192.168.100.50` | `kali` / `kali` |
+| **Wazuh-SIEM** | `192.168.100.10` | `ssh wazuh-user@192.168.100.10` | `wazuh-user` (Mật khẩu tự đặt khi cài đặt) |
+| **Suricata-Sensor** | `192.168.100.20` | `ssh ubuntu@192.168.100.20` | `ubuntu` (Mật khẩu tự đặt khi cài đặt) |
+| **Target-Server** | `10.0.0.10` | `ssh ubuntu@10.0.0.10` *(xem lệnh thêm route bên dưới)* | `ubuntu` (Mật khẩu tự đặt khi cài đặt) |
+| **Attacker-Kali** | `192.168.100.50` | `ssh kali@192.168.100.50` | `kali` (Mật khẩu tự đặt khi cài đặt) |
 
 * **Lợi ích:** Bạn hoàn toàn ở trên môi trường máy thật, có thể bôi đen copy bất kỳ khối lệnh cấu hình nào trong tài liệu này và **bấm `Ctrl + V` hoặc nhấp chuột phải** để dán tức thì, không bị sót ký tự, không bị kẹt phím!
 * **Mẹo định tuyến truy cập Target-Server (`10.0.0.10`):** Do Target nằm ở dải mạng nội bộ phía sau Router Sensor, để máy thật Windows có thể ping và SSH trực tiếp vào Target, hãy mở **PowerShell (Run as Administrator)** trên máy thật Windows và chạy 1 lệnh duy nhất:
@@ -360,7 +360,7 @@ scp ubuntu@10.0.0.10:/etc/netplan/00-installer-config.yaml ./configs/netplan-tar
 ```
 
 #### Phương pháp thay thế (Đồ họa & DevSecOps):
-* **Dùng WinSCP:** Kết nối SFTP Port 22 vào IP máy ảo trên máy tính của bạn (`ubuntu`/`123` hoặc `wazuh-user`/`wazuh`) để kéo thả file.
+* **Dùng WinSCP:** Kết nối SFTP Port 22 vào IP máy ảo trên máy tính của bạn (sử dụng tài khoản `ubuntu` hoặc `wazuh-user`) để kéo thả file.
 * **Dùng Git trực tiếp trên máy ảo:** `git clone` repo về máy ảo, copy file vào thư mục và `git push` thẳng lên nhánh cá nhân của bạn.
 
 ---
@@ -524,7 +524,7 @@ Trước khi từng thành viên bắt tay vào thực hiện chuỗi lệnh c�
 
 #### Bước 1: Khởi động máy ảo và gán IP tĩnh 192.168.100.10 (Tuyệt chiêu SSH máy thật)
 1. Import file `.ova` vào VMware (xem lại [Mục 4.2](#bước-42-import-máy-ảo-wazuh-siem-từ-file-ova)).
-2. Đăng nhập terminal: user `wazuh-user` / password `wazuh`.
+2. Đăng nhập terminal: tài khoản `wazuh-user` (nhập mật khẩu quản trị).
 3. Khi máy ảo khởi động lên mạng NAT VMnet8, VMware tự động cấp IP động qua DHCP:
    * **Bước 3.1: Xem IP DHCP tạm thời hiện tại:**
      ```bash
@@ -765,7 +765,7 @@ sudo poweroff
          addresses: [10.0.0.1/24]
    ```
    Áp dụng mạng: `sudo netplan apply`.  
-   *(Mẹo Copy/Paste: Ngay sau khi apply mạng thành công, hãy chuyển sang PowerShell trên máy thật Windows và gõ `ssh ubuntu@192.168.100.20` với pass `123` để paste các lệnh cấu hình bên dưới cực nhanh mà không lo kẹt phím!)*
+   *(Mẹo Copy/Paste: Ngay sau khi apply mạng thành công, hãy chuyển sang PowerShell trên máy thật Windows và gõ `ssh ubuntu@192.168.100.20` để dán các lệnh cấu hình bên dưới thuận tiện mà không lo kẹt phím!)*
 
 #### Bước 2: Kích hoạt Router IP Forwarding & NAT Masquerade
 ```bash
