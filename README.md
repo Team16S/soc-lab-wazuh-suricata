@@ -128,6 +128,10 @@ git fetch origin && git switch --track origin/<ten-nhanh-pr>
 * **Lưu vết phiên làm việc (Session Persistence):** Sau mỗi phiên làm việc, thành viên yêu cầu AI cập nhật tóm tắt mốc kỹ thuật vào `session_summary.md` trên máy cá nhân để duy trì ngữ cảnh cho các phiên tiếp theo.
 * **Quy chuẩn đối soát QA:** Thực hiện đối soát bắt buộc theo quy tắc [.agent/rules/qa-soc-lab-protocol.md](.agent/rules/qa-soc-lab-protocol.md) trước và sau mỗi tác vụ kỹ thuật.
 
+### 4.3. Kỷ luật chụp Snapshot máy ảo (VMware Snapshot Discipline)
+* **Chụp Live Snapshot theo từng mốc (Checkpoint):** Khi hoàn thành mỗi bước cấu hình (gán IP, cấu hình iptables, kết nối Agent), chụp ngay Snapshot khi máy ảo đang chạy (*Snapshot the virtual machine's memory*). Không tắt máy hoàn toàn giữa các task để tránh mất thời gian khởi động lại Indexer/Suricata (thường mất 2-3 phút) và duy trì liên tục phiên làm việc SSH.
+* **Bảo toàn hiện trường khi gặp sự cố:** Khi phát sinh lỗi kết nối hoặc dịch vụ, không tắt nguồn cưỡng bức (hard power-off) để tránh làm hỏng cơ sở dữ liệu Indexer hoặc mất log trong bộ nhớ đệm. Giữ nguyên máy ảo để kiểm tra log (`journalctl -xe`, `ossec.log`), hoặc hoàn tác về Snapshot checkpoint gần nhất chỉ trong vài giây.
+
 ---
 
 ## 5. MA TRẬN KIỂM THỬ THỰC NGHIỆM & KẾT QUẢ ĐO LƯỜNG (MITRE ATT&CK)
